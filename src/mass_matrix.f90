@@ -25,10 +25,6 @@ module mass_matrix
                                end do
                             end do
                          end do
-                         if (ielem == 1) then
-                            print*, Me(1,:)
-                         end if
-                         Mc(ind,ind) = Mc(ind,ind)+Me
                       end do
 
               end subroutine consistent_mass

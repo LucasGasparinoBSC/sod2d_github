@@ -58,8 +58,6 @@ module time_integ
                             q_1(ipoin,:) = rho_1(ipoin)*u_1(ipoin,:)
                          end do
 
-                         print*, maxval(abs(rho_1))
-
                          !
                          ! Sub Step 2
                          !
@@ -79,8 +77,6 @@ module time_integ
                          do ipoin = 1,npoin
                             q_2(ipoin,:) = rho_2(ipoin)*u_2(ipoin,:)
                          end do
-
-                         print*, maxval(abs(rho_2))
 
                          !
                          ! Sub Step 3
@@ -102,8 +98,6 @@ module time_integ
                             q_3(ipoin,:) = rho_3(ipoin)*u_3(ipoin,:)
                          end do
 
-                         print*, maxval(abs(rho_3))
-
                          !
                          ! Sub Step 4
                          !
@@ -124,8 +118,6 @@ module time_integ
                          do ipoin = 1,npoin
                             q_4(ipoin,:) = rho_4(ipoin)*u_4(ipoin,:)
                          end do
-
-                         print*, maxval(abs(rho_4))
 
                          !
                          ! Update
