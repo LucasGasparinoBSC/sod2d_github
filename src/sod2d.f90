@@ -205,21 +205,25 @@ program sod2d
         !*********************************************************************!
 
         matrix_type = 'LUMPE'
-        solver_type = ''
+        solver_type = 'LUMSO'
         write(*,*) '--| ENTER MASS MATRIX TYPE:'
         read(*,*) matrix_type
         if (matrix_type == 'LUMPE') then
            allocate(Ml(npoin))
            call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
+           solver_type = 'LUMSO'
         else if (matrix_type == 'CONSI') then
            allocate(Mc(npoin,npoin))
            call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
+           solver_type = 'CONGR'
         else
            write(*,*) '--| MATRIX TYPE MUST BE EITHER CONSI OR LUMPE!'
            write(*,*) '--| DEFAULTING TO LUMPE TYPE...'
+           write(*,*) '--| DEFAULTING TO LUMSO SOLVER...'
            allocate(Ml(npoin))
            call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         end if
+        write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
 
         call rk_4(nelem,npoin,ndime,ndof,1,ngaus,nnode, &
