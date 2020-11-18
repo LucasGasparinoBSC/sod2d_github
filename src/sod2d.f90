@@ -10,6 +10,7 @@ program sod2d
         use quadrature_rules
         use mesh_reader
         use inicond_reader
+        use mass_matrix
 
         use time_integ
 
@@ -29,10 +30,12 @@ program sod2d
         real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
         real(8),    allocatable    :: dxN(:,:), gpcar(:,:,:,:), gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:), q(:,:), rho(:), pr(:), E(:), Tem(:), e_int(:)
+        real(8),    allocatable    :: Mc(:,:), Ml(:)
         real(8)                    :: s, t, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
         character(500)             :: file_path
         character(500)             :: file_name
+        character(5)               :: matrix_type, solver_type
 
         !*********************************************************************!
         ! Basic data, hardcoded for now                                       !
@@ -196,6 +199,28 @@ program sod2d
               gpvol(1,igaus,ielem) = wgp(igaus)*detJe
            end do
         end do
+
+        !*********************************************************************!
+        ! Compute mass matrix (Lumped or Consistent) and set solver type      !
+        !*********************************************************************!
+
+        matrix_type = 'LUMPE'
+        solver_type = ''
+        write(*,*) '--| ENTER MASS MATRIX TYPE:'
+        read(*,*) matrix_type
+        if (matrix_type == 'LUMPE') then
+           allocate(Ml(npoin))
+           call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
+        else if (matrix_type == 'CONSI') then
+           allocate(Mc(npoin,npoin))
+           call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
+        else
+           write(*,*) '--| MATRIX TYPE MUST BE EITHER CONSI OR LUMPE!'
+           write(*,*) '--| DEFAULTING TO LUMPE TYPE...'
+           allocate(Ml(npoin))
+           call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
+        end if
+
 
         call rk_4(nelem,npoin,ndime,ndof,1,ngaus,nnode, &
                   ldof,connec,Ngp,gpcar,gpvol,0.000001d0,rho,u,q,pr,E,Tem,e_int)
