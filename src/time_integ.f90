@@ -1,7 +1,6 @@
 module time_integ
 
       use elem_convec
-      use solvers
 
       contains
 
