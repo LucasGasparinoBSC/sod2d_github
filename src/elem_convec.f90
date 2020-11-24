@@ -79,4 +79,41 @@ module elem_convec
 
               end subroutine mom_convec
 
+              subroutine ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,pr,E,Rener)
+
+                      implicit none
+
+                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
+                      integer(4), intent(in)  :: connec(nelem,nnode)
+                      real(8),    intent(in)  :: Ngp(ngaus,nnode)
+                      real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
+                      real(8),    intent(in)  :: u(npoin,ndime), pr(npoin), E(npoin)
+                      real(8),    intent(out) :: Rener(npoin)
+                      integer(4)              :: ind(nnode)
+                      integer(4)              :: ielem, igaus, inode, jnode
+                      real(8)                 :: Re(nnode)
+                      real(8)                 :: el_u(nnode,ndime), el_pr(nnode), el_E(nnode), aux
+
+                      Rener = 0.0d0
+                      do ielem = 1,nelem
+                         Re = 0.0d0
+                         ind = connec(ielem,:)
+                         el_u(1:nnode,1:ndime) = u(ind,1:ndime)
+                         el_pr(1:nnode) = pr(ind)
+                         el_E(1:nnode) = E(ind)
+                         do igaus = 1,ngaus
+                            do inode = 1,nnode
+                               do jnode = 1,nnode
+                                  aux = gpcar(1,jnode,igaus,ielem)*el_u(jnode,1)*(el_E(jnode)+el_pr(jnode)) + &
+                                        gpcar(2,jnode,igaus,ielem)*el_u(jnode,2)*(el_E(jnode)+el_pr(jnode))
+                                  Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*aux
+                               end do
+                            end do
+                         end do
+                         Rener(ind) = Rener(ind)+Re(1:nnode)
+                      end do
+
+              end subroutine ener_convec
+
 end module elem_convec
