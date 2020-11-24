@@ -29,12 +29,12 @@ for line in fCoord:
     y   = float(data[2])
 
     if x < c:
-        vx = np.sin(x)
+        vx = 0.0
         vy = 0.0
         pr = 1.0
         rho = 1.0
     elif x>= c:
-        vx = np.sin(x)
+        vx = 1.0
         vy = 0.0
         pr = 0.1
         rho = 0.125

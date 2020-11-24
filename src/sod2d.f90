@@ -20,8 +20,8 @@ program sod2d
         integer(4)                 :: idime, inode, igaus
         integer(4)                 :: nelem, npoin, nboun
         integer(4)                 :: ielem, ipoin, iboun
-        integer(4)                 :: idof, ndof
-        integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:)
+        integer(4)                 :: idof, ndof, nbnodes, ibnodes
+        integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
         integer(4), allocatable    :: aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
@@ -82,16 +82,22 @@ program sod2d
               end if
            end do
         end do
+        nbnodes = ndof
         ndof = npoin-ndof
         write(*,*) '--| TOTAL FREE NODES := ',ndof
 
         allocate(ldof(ndof))
+        allocate(lbnodes(nbnodes))
 
         idof = 0
+        ibnodes = 0
         do ipoin = 1,npoin
            if (aux1(ipoin) .ne. 0) then
               idof = idof+1
               ldof(idof) = aux1(ipoin)
+           else
+              ibnodes = ibnodes+1
+              lbnodes(ibnodes) = ipoin
            end if
         end do
 
@@ -226,7 +232,7 @@ program sod2d
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
 
-        call rk_4(nelem,npoin,ndime,ndof,1,ngaus,nnode, &
-                  ldof,connec,Ngp,gpcar,gpvol,0.000001d0,rho,u,q,pr,E,Tem,e_int)
+        call rk_4(nelem,npoin,ndime,ndof,nbnodes,1,ngaus,nnode, &
+                  ldof,lbnodes,connec,Ngp,gpcar,gpvol,0.1d0,rho,u,q,pr,E,Tem,e_int)
 
 end program sod2d
