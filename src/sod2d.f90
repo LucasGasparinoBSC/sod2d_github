@@ -207,32 +207,27 @@ program sod2d
         end do
 
         !*********************************************************************!
-        ! Compute mass matrix (Lumped or Consistent) and set solver type      !
+        ! Compute mass matrix (Lumped and Consistent) and set solver type      !
         !*********************************************************************!
 
-        matrix_type = 'LUMPE'
+        write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
+        allocate(Ml(npoin))
+        call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         solver_type = 'LUMSO'
-        write(*,*) '--| ENTER MASS MATRIX TYPE:'
-        read(*,*) matrix_type
-        if (matrix_type == 'LUMPE') then
-           allocate(Ml(npoin))
-           call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
-           solver_type = 'LUMSO'
-        else if (matrix_type == 'CONSI') then
-           allocate(Mc(npoin,npoin))
-           call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
+
+        write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
+        allocate(Mc(npoin,npoin))
+        call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
+        write(*,*) '--| ENTER REQUIRED SOLVER FOR CONSISTENT MASS MATRIX:'
+        read(*,*) solver_type
+        if (solver_type .ne. 'CONGR' .or. solver_type .ne. 'APINV') then
            solver_type = 'CONGR'
-        else
-           write(*,*) '--| MATRIX TYPE MUST BE EITHER CONSI OR LUMPE!'
-           write(*,*) '--| DEFAULTING TO LUMPE TYPE...'
-           write(*,*) '--| DEFAULTING TO LUMSO SOLVER...'
-           allocate(Ml(npoin))
-           call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         end if
-        write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
+        write(*,*) '--| USING SOLVER ',solver_type,' FOR CONSISTENT MASS MATRIX'
 
 
-        call rk_4(nelem,npoin,ndime,ndof,nbnodes,1,ngaus,nnode, &
-                  ldof,lbnodes,connec,Ngp,gpcar,gpvol,0.1d0,rho,u,q,pr,E,Tem,e_int)
+        call rk_4(nelem,npoin,ndime,ndof,nbnodes,100,ngaus,nnode, &
+                  ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,0.001d0, &
+                  rho,u,q,pr,E,Tem,e_int)
 
 end program sod2d

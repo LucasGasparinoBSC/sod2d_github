@@ -34,7 +34,7 @@ for line in fCoord:
         pr = 1.0
         rho = 1.0
     elif x>= c:
-        vx = 1.0
+        vx = 0.0
         vy = 0.0
         pr = 0.1
         rho = 0.125

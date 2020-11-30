@@ -2,8 +2,8 @@ Mesh.MshFileVersion = 2.2;
 
 L = 8.0;
 H = 2.0;
-nx = 20;
-dx = L/nx;
+nx = 4;
+dx = H/nx;
 
 Point(1) = {-L/2,-H/2,0.0,dx};
 Point(2) = { 0.0,-H/2,0.0,dx};
