@@ -63,17 +63,18 @@ module elem_convec
                             do inode = 1,nnode
                                do jnode = 1,nnode
                                   Re(inode,1) = Re(inode,1) + gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                     gpcar(1,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,1)+el_pr(jnode)) + &
-                                     gpcar(2,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,2))
+                                     (gpcar(1,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,1))+ &
+                                     gpcar(2,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,2))+ &
+                                     gpcar(1,jnode,igaus,ielem)*el_pr(jnode))
                                   Re(inode,2) = Re(inode,2) + gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                     gpcar(2,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,2)+el_pr(jnode)) + &
-                                     gpcar(1,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,1))
+                                     (gpcar(1,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,1))+ &
+                                     gpcar(2,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,2))+ &
+                                     gpcar(2,jnode,igaus,ielem)*el_pr(jnode))
                                end do
                             end do
                          end do
-                         do idime = 1,ndime
-                            Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
-                         end do
+                         Rmom(ind,1) = Rmom(ind,1)+Re(1:nnode,1)
+                         Rmom(ind,2) = Rmom(ind,2)+Re(1:nnode,2)
                       end do
 
               end subroutine mom_convec

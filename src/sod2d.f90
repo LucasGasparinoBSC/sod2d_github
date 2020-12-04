@@ -34,7 +34,7 @@ program sod2d
         real(8)                    :: s, t, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
         character(500)             :: file_path
-        character(500)             :: file_name
+        character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
 
         !*********************************************************************!
@@ -120,6 +120,18 @@ program sod2d
         call read_veloc(ndime,npoin,file_path,u)
         call read_densi(npoin,file_path,rho)
         call read_press(npoin,file_path,pr) ! Can be switched for TEMPE
+
+        !
+        ! File dump
+        !
+        write(dumpfile,'("tstep_",i0,".dat")') 0
+        open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
+        do ipoin = 1,npoin
+           if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
+              write(99+1,"(f8.4, f16.8, f16.8)") coord(ipoin,1), rho(ipoin), u(ipoin,1)
+           end if
+        end do
+        close(unit=99+1)
 
         !*********************************************************************!
         ! Generate complementary info                                         !
@@ -226,8 +238,20 @@ program sod2d
         write(*,*) '--| USING SOLVER ',solver_type,' FOR CONSISTENT MASS MATRIX'
 
 
-        call rk_4(nelem,npoin,ndime,ndof,nbnodes,100,ngaus,nnode, &
-                  ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,0.001d0, &
+        call rk_4(nelem,npoin,ndime,ndof,nbnodes,4000,ngaus,nnode, &
+                  ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,0.00001d0, &
                   rho,u,q,pr,E,Tem,e_int)
+
+        !
+        ! File dump
+        !
+        write(dumpfile,'("tstep_",i0,".dat")') 4000
+        open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
+        do ipoin = 1,npoin
+           if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
+              write(99+1,"(f8.4, f16.8, f16.8)") coord(ipoin,1), rho(ipoin), u(ipoin,1)
+           end if
+        end do
+        close(unit=99+1)
 
 end program sod2d
