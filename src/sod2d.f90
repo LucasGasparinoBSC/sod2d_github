@@ -233,7 +233,7 @@ program sod2d
         write(*,*) '--| ENTER REQUIRED SOLVER FOR CONSISTENT MASS MATRIX:'
         read(*,*) solver_type
         if (solver_type .ne. 'CONGR' .or. solver_type .ne. 'APINV') then
-           solver_type = 'CONGR'
+           solver_type = 'APINV'
         end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR CONSISTENT MASS MATRIX'
 
