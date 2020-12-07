@@ -238,14 +238,14 @@ program sod2d
         write(*,*) '--| USING SOLVER ',solver_type,' FOR CONSISTENT MASS MATRIX'
 
 
-        call rk_4(nelem,npoin,ndime,ndof,nbnodes,4000,ngaus,nnode, &
-                  ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,0.00001d0, &
+        call rk_4(nelem,npoin,ndime,ndof,nbnodes,400,ngaus,nnode, &
+                  ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,0.0001d0, &
                   rho,u,q,pr,E,Tem,e_int)
 
         !
         ! File dump
         !
-        write(dumpfile,'("tstep_",i0,".dat")') 4000
+        write(dumpfile,'("tstep_",i0,".dat")') 400
         open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
         do ipoin = 1,npoin
            if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then

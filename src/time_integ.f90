@@ -62,11 +62,14 @@ module time_integ
                          write(*,*) '            (MASS)'
                          call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q,Rmass_1)
                          call lumped_solver_scal(npoin,Ml,Rmass_1)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rmass_1)
                          rho_1(:) = rho(:)-(dt/2.0d0)*Rmass_1(:)
 
                          write(*,*) '            (MOMENTUM)'
                          call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,q,pr,Rmom_1)
                          call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
+                         call approx_inverse_vect(ndime,npoin,Ml,Mc,Rmom_1)
+
                          q_1(:,:) = q(:,:)-(dt/2.0d0)*Rmom_1(:,:)
                          q_1(lbnodes,2) = 0.0d0
                          do ipoin = 1,npoin
@@ -76,6 +79,7 @@ module time_integ
                          write(*,*) '            (ENERGY)'
                          call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,pr,E,Rener_1)
                          call lumped_solver_scal(npoin,Ml,Rener_1)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rener_1)
                          E_1(:) = E(:)-(dt/2.0d0)*Rener_1(:)
 
                          do ipoin = 1,npoin
@@ -103,11 +107,13 @@ module time_integ
                          write(*,*) '            (MASS)'
                          call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_1,Rmass_2)
                          call lumped_solver_scal(npoin,Ml,Rmass_2)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rmass_2)
                          rho_2(:) = rho(:)-(dt/2.0d0)*Rmass_2(:)
 
                          write(*,*) '            (MOMENTUM)'
                          call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,q_1,pr_1,Rmom_2)
                          call lumped_solver_vect(npoin,ndime,Ml,Rmom_2)
+                         call approx_inverse_vect(ndime,npoin,Ml,Mc,Rmom_2)
                          q_2(:,:) = q(:,:)-(dt/2.0d0)*Rmom_2(:,:)
                          q_2(lbnodes,2) = 0.0d0
                          do ipoin = 1,npoin
@@ -117,6 +123,7 @@ module time_integ
                          write(*,*) '            (ENERGY)'
                          call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,pr_1,E_1,Rener_2)
                          call lumped_solver_scal(npoin,Ml,Rener_2)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rener_2)
                          E_2(:) = E(:)-(dt/2.0d0)*Rener_2(:)
 
                          do ipoin = 1,npoin
@@ -144,11 +151,13 @@ module time_integ
                          write(*,*) '            (MASS)'
                          call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_2,Rmass_3)
                          call lumped_solver_scal(npoin,Ml,Rmass_3)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rmass_3)
                          rho_3(:) = rho(:)-(dt/1.0d0)*Rmass_3(:)
 
                          write(*,*) '            (MOMENTUM)'
                          call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,q_2,pr_2,Rmom_3)
                          call lumped_solver_vect(npoin,ndime,Ml,Rmom_3)
+                         call approx_inverse_vect(ndime,npoin,Ml,Mc,Rmom_3)
                          q_3(:,:) = q(:,:)-(dt/1.0d0)*Rmom_3(:,:)
                          q_3(lbnodes,2) = 0.0d0
                          do ipoin = 1,npoin
@@ -158,6 +167,7 @@ module time_integ
                          write(*,*) '            (ENERGY)'
                          call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,pr_2,E_2,Rener_3)
                          call lumped_solver_scal(npoin,Ml,Rener_3)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rener_3)
                          E_3(:) = E(:)-(dt/1.0d0)*Rener_3(:)
 
                          do ipoin = 1,npoin
@@ -185,12 +195,14 @@ module time_integ
                          write(*,*) '            (MASS)'
                          call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_3,Rmass_4)
                          call lumped_solver_scal(npoin,Ml,Rmass_4)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rmass_4)
                          aux_mass = Rmass_1+2.0d0*Rmass_2+2.0d0*Rmass_3+Rmass_4
                          rho_4(:) = rho(:)-(dt/6.0d0)*aux_mass(:)
 
                          write(*,*) '            (MOMENTUM)'
                          call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,q_3,pr_3,Rmom_4)
                          call lumped_solver_vect(npoin,ndime,Ml,Rmom_4)
+                         call approx_inverse_vect(ndime,npoin,Ml,Mc,Rmom_4)
                          aux_mom = Rmom_1+2.0d0*Rmom_2+2.0d0*Rmom_3+Rmom_4
                          q_4(:,:) = q(:,:)-(dt/6.0d0)*aux_mom(:,:)
                          q_4(lbnodes,2) = 0.0d0
@@ -201,6 +213,7 @@ module time_integ
                          write(*,*) '            (ENERGY)'
                          call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,pr_3,E_3,Rener_4)
                          call lumped_solver_scal(npoin,Ml,Rener_4)
+                         call approx_inverse_scalar(npoin,Ml,Mc,Rmom_4)
                          aux_ener = Rener_1+2.0d0*Rener_2+2.0d0*Rener_3+Rener_4
                          E_4(:) = E(:)-(dt/6.0d0)*aux_ener
 
