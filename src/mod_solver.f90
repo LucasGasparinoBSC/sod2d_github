@@ -64,7 +64,7 @@ module mod_solver
                       !
                       ! Step over sucessive powers
                       !
-                      ppow = 10
+                      ppow = 1
                       do ipow = 1,ppow
                          v = matmul(Ar,v)
                          x = x+v
@@ -109,7 +109,7 @@ module mod_solver
                          !
                          ! Step over sucessive powers
                          !
-                         ppow = 10
+                         ppow = 1
                          do ipow = 1,ppow
                             v = matmul(Ar,v)
                             x = x+v

@@ -16,11 +16,12 @@ program sod2d
 
         implicit none
 
-        integer(4)                 :: ndime, nnode, ngaus
-        integer(4)                 :: idime, inode, igaus
+        integer(4)                 :: ndime, nnode, ngaus, nstep
+        integer(4)                 :: idime, inode, igaus, istep
         integer(4)                 :: nelem, npoin, nboun
         integer(4)                 :: ielem, ipoin, iboun
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
+        integer(4)                 :: flag_predic
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
         integer(4), allocatable    :: aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:)
@@ -29,10 +30,11 @@ program sod2d
         real(8),    allocatable    :: Je(:,:), He(:,:)
         real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
         real(8),    allocatable    :: dxN(:,:), gpcar(:,:,:,:), gpvol(:,:,:)
-        real(8),    allocatable    :: u(:,:), q(:,:), rho(:), pr(:), E(:), Tem(:), e_int(:)
+        real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
         real(8),    allocatable    :: Mc(:,:), Ml(:)
         real(8)                    :: s, t, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
+        real(8)                    :: dt, cfl
         character(500)             :: file_path
         character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
@@ -43,10 +45,12 @@ program sod2d
 
         ndime = 2
         nnode = 4
+        nstep = 100
         Rgas = 287.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
+        dt = 0.0001d0
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -105,21 +109,25 @@ program sod2d
         ! Allocate variables                                                  !
         !*********************************************************************!
 
-        allocate(u(npoin,ndime))  ! Velocity
-        allocate(q(npoin,ndime))  ! momentum
-        allocate(rho(npoin))      ! Density
-        allocate(pr(npoin))       ! Pressure
-        allocate(E(npoin))        ! Total Energy
-        allocate(Tem(npoin))      ! Temperature
-        allocate(e_int(npoin))    ! Internal Energy
+        !
+        ! Last rank is for prediction-advance related to entropy viscosity,
+        ! where 1 is prediction, 2 is final value
+        !
+        allocate(u(npoin,ndime,2))  ! Velocity
+        allocate(q(npoin,ndime,2))  ! momentum
+        allocate(rho(npoin,2))      ! Density
+        allocate(pr(npoin,2))       ! Pressure
+        allocate(E(npoin,2))        ! Total Energy
+        allocate(Tem(npoin,2))      ! Temperature
+        allocate(e_int(npoin,2))    ! Internal Energy
 
         !*********************************************************************!
         ! Read initial conditions                                             !
         !*********************************************************************!
 
-        call read_veloc(ndime,npoin,file_path,u)
-        call read_densi(npoin,file_path,rho)
-        call read_press(npoin,file_path,pr) ! Can be switched for TEMPE
+        call read_veloc(ndime,npoin,file_path,u(:,:,2))
+        call read_densi(npoin,file_path,rho(:,2))
+        call read_press(npoin,file_path,pr(:,2)) ! Can be switched for TEMPE
 
         !
         ! File dump
@@ -128,7 +136,7 @@ program sod2d
         open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
         do ipoin = 1,npoin
            if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
-              write(99+1,"(f8.4, f16.8, f16.8)") coord(ipoin,1), rho(ipoin), u(ipoin,1)
+              write(99+1,"(f8.4, f16.8, f16.8, f16.8)") coord(ipoin,1), rho(ipoin,2), u(ipoin,1,2), pr(ipoin,2)
            end if
         end do
         close(unit=99+1)
@@ -140,10 +148,10 @@ program sod2d
         ! Assuming u, rho, p as IC:
 
         do ipoin = 1,npoin
-           e_int(ipoin) = pr(ipoin)/(rho(ipoin)*(gamma_gas-1.0d0))
-           Tem(ipoin) = pr(ipoin)/(rho(ipoin)*Rgas)
-           E(ipoin) = rho(ipoin)*(0.5d0*dot_product(u(ipoin,:),u(ipoin,:))+e_int(ipoin))
-           q(ipoin,1:ndime) = rho(ipoin)*u(ipoin,1:ndime)
+           e_int(ipoin,2) = pr(ipoin,2)/(rho(ipoin,2)*(gamma_gas-1.0d0))
+           Tem(ipoin,2) = pr(ipoin,2)/(rho(ipoin,2)*Rgas)
+           E(ipoin,2) = rho(ipoin,2)*(0.5d0*dot_product(u(ipoin,:,2),u(ipoin,:,2))+e_int(ipoin,2))
+           q(ipoin,1:ndime,2) = rho(ipoin,2)*u(ipoin,1:ndime,2)
         end do
 
         !*********************************************************************!
@@ -230,26 +238,56 @@ program sod2d
         write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
         allocate(Mc(npoin,npoin))
         call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
-        write(*,*) '--| ENTER REQUIRED SOLVER FOR CONSISTENT MASS MATRIX:'
+        write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
+        write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV, CONGR:'
         read(*,*) solver_type
-        if (solver_type .ne. 'CONGR' .or. solver_type .ne. 'APINV') then
-           solver_type = 'APINV'
+        if (solver_type .ne. 'CONGR' .or. solver_type .ne. 'APINV' .or. solver_type .ne. 'LUMSO') then
+           solver_type = 'LUMSO'
         end if
-        write(*,*) '--| USING SOLVER ',solver_type,' FOR CONSISTENT MASS MATRIX'
+        write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
+        !*********************************************************************!
+        ! Start of time stepping                                              !
+        !*********************************************************************!
 
-        call rk_4(nelem,npoin,ndime,ndof,nbnodes,400,ngaus,nnode, &
-                  ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,0.0001d0, &
-                  rho,u,q,pr,E,Tem,e_int)
+        do istep = 1,nstep
+
+           write(*,*) '   --| STEP: ', istep
+
+           !
+           ! Prediction
+           !
+           flag_predic = 1
+           rho(:,1) = rho(:,2)
+           u(:,:,1) = u(:,:,2)
+           q(:,:,1) = q(:,:,2)
+           pr(:,1) = pr(:,2)
+           E(:,1) = E(:,2)
+           Tem(:,1) = Tem(:,2)
+           e_int(:,1) = e_int(:,2)
+
+           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
+                     ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                     rho,u,q,pr,E,Tem,e_int)
+
+           !
+           ! Advance with entropy viscosity
+           !
+           flag_predic = 0
+           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
+                     ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                     rho,u,q,pr,E,Tem,e_int)
+
+        end do
 
         !
         ! File dump
         !
-        write(dumpfile,'("tstep_",i0,".dat")') 400
+        write(dumpfile,'("tstep_",i0,".dat")') 20
         open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
         do ipoin = 1,npoin
            if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
-              write(99+1,"(f8.4, f16.8, f16.8)") coord(ipoin,1), rho(ipoin), u(ipoin,1)
+              write(99+1,"(f8.4, f16.8, f16.8, f16.8)") coord(ipoin,1), rho(ipoin,2), u(ipoin,1,2), pr(ipoin,2)
            end if
         end do
         close(unit=99+1)
