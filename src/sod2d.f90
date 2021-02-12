@@ -235,15 +235,12 @@ program sod2d
         call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         solver_type = 'LUMSO'
 
-        write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
+        write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
         allocate(Mc(npoin,npoin))
         call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV, CONGR:'
         read(*,*) solver_type
-        if (solver_type .ne. 'CONGR' .or. solver_type .ne. 'APINV' .or. solver_type .ne. 'LUMSO') then
-           solver_type = 'LUMSO'
-        end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
         !*********************************************************************!
