@@ -49,6 +49,8 @@ module time_integ
                       if (flag_predic == 1) then
                          pos = 1 ! Prediction
                       else if (flag_predic == 0) then
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),Rdiff_scal)
+                         Rmass_1 = Rmass_1 + Rdiff_scal
                          pos = 2 ! Update
                       end if
 
@@ -142,8 +144,8 @@ module time_integ
 
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_1,Rmass_2)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),Rdiff_scal)
+                         Rmass_2 = Rmass_2 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_2)
                       call approx_inverse_scalar(npoin,Ml,Mc,Rmass_2)
@@ -151,8 +153,8 @@ module time_integ
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,q_1,pr_1,Rmom_2)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Rdiff_vect)
+                         Rmom_2 = Rmom_2 + Rdiff_vect
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_2)
                       call approx_inverse_vect(ndime,npoin,Ml,Mc,Rmom_2)
@@ -164,8 +166,8 @@ module time_integ
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,pr_1,E_1,Rener_2)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Tem(:,pos),Rdiff_scal)
+                         Rener_2 = Rener_2 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_2)
                       call approx_inverse_scalar(npoin,Ml,Mc,Rener_2)
@@ -199,8 +201,8 @@ module time_integ
 
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_2,Rmass_3)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),Rdiff_scal)
+                         Rmass_3 = Rmass_3 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_3)
                       call approx_inverse_scalar(npoin,Ml,Mc,Rmass_3)
@@ -208,8 +210,8 @@ module time_integ
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,q_2,pr_2,Rmom_3)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Rdiff_vect)
+                         Rmom_3 = Rmom_3 + Rdiff_vect
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_3)
                       call approx_inverse_vect(ndime,npoin,Ml,Mc,Rmom_3)
@@ -221,8 +223,8 @@ module time_integ
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,pr_2,E_2,Rener_3)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Tem(:,pos),Rdiff_scal)
+                         Rener_3 = Rener_3 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_3)
                       call approx_inverse_scalar(npoin,Ml,Mc,Rener_3)
@@ -256,8 +258,8 @@ module time_integ
 
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_3,Rmass_4)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),Rdiff_scal)
+                         Rmass_4 = Rmass_4 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_4)
                       call approx_inverse_scalar(npoin,Ml,Mc,Rmass_4)
@@ -266,8 +268,10 @@ module time_integ
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,q_3,pr_3,Rmom_4)
                       if (flag_predic == 0) then
-                         ! call diff
-                         ! Rener_1 = Rener_1 + Rdiff_sca
+                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Rdiff_vect)
+                         Rmom_4 = Rmom_4 + Rdiff_vect
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Tem(:,pos),Rdiff_scal)
+                         Rener_4 = Rener_4 + Rdiff_scal
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_4)
                       call approx_inverse_vect(ndime,npoin,Ml,Mc,Rmom_4)
