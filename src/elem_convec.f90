@@ -39,6 +39,8 @@ module elem_convec
 
               subroutine mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,q,pr,Rmom)
 
+                      ! TODO: modify to accept 3D elements as well
+
                       implicit none
 
                       integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime

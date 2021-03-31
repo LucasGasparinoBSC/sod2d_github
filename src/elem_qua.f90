@@ -27,4 +27,28 @@ module elem_qua
 
                 end subroutine qua04
 
+                subroutine quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist)
+
+                        implicit none
+
+                        integer(4), intent(in)            :: ielem, nelem, nnode, npoin, ndime
+                        integer(4), intent(in)            :: connec(nelem,nnode)
+                        real(8),    intent(in)            :: coord(npoin,ndime)
+                        integer(4), intent(out)           :: ncorner, nedge
+                        real(8),    intent(out)           :: dist(4,ndime)
+                        integer(4)                        :: ind(nnode)
+                        real(8)                           :: xp(4,ndime)
+
+                        ind = connec(ielem,:)
+                        ncorner = 4
+                        nedge = 4
+
+                        xp(1:4,1:ndime) = coord(ind(1:4),1:ndime) ! Corner coordinates
+                        dist(1,:) = xp(2,:)-xp(1,:)
+                        dist(2,:) = xp(3,:)-xp(2,:)
+                        dist(3,:) = xp(4,:)-xp(3,:)
+                        dist(4,:) = xp(1,:)-xp(4,:)
+
+                end subroutine quad_edges
+
 end module

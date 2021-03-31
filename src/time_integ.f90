@@ -49,8 +49,6 @@ module time_integ
                       if (flag_predic == 1) then
                          pos = 1 ! Prediction
                       else if (flag_predic == 0) then
-                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),Rdiff_scal)
-                         Rmass_1 = Rmass_1 + Rdiff_scal
                          pos = 2 ! Update
                       end if
 

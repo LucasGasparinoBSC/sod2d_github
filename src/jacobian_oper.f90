@@ -1,5 +1,7 @@
 module jacobian_oper
 
+        ! TODO: make 3D compatible
+
         contains
 
                 subroutine elem_jacobian(ndime,nnode,elcod,dN,Je,detJe,He)

@@ -1,23 +1,39 @@
 module mod_geom
 
+      use elem_qua
+
       contains
 
-         !!subroutine char_length_qua()
+         subroutine char_length(ielem,nelem,nnode,npoin,ndime,connec,coord,he)
 
-         !!   implicit none
+                 implicit none
 
-         !!   e12 = (/ abs(elcod(1,2)-elcod(1,1)), abs(elcod(2,2)-elcod(2,1)) /)
-         !!   e23 = (/ abs(elcod(1,3)-elcod(1,2)), abs(elcod(2,3)-elcod(2,2)) /)
-         !!   e34 = (/ abs(elcod(1,4)-elcod(1,3)), abs(elcod(2,4)-elcod(2,3)) /)
-         !!   e41 = (/ abs(elcod(1,1)-elcod(1,4)), abs(elcod(2,1)-elcod(2,4)) /)
+                 integer(4), intent(in)  :: ielem, nelem, nnode, npoin, ndime, connec(nelem,nnode)
+                 real(8),    intent(in)  :: coord(npoin,ndime)
+                 real(8),    intent(out) :: he
+                 integer(4)              :: iedge, ncorner, nedge
+                 real(8)                 :: dist(12,ndime), dist2(12)
 
-         !!   l12 = sqrt(dot_product(e12,e12))
-         !!   l23 = sqrt(dot_product(e23,e23))
-         !!   l34 = sqrt(dot_product(e34,e34))
-         !!   l41 = sqrt(dot_product(e41,e41))
+                 dist = 0.0d0
+                 if (ndime == 2) then
+                         if (nnode == 3 .or. nnode == 6) then ! TRI_XX
+                                 write(*,*) "ELEMENT TRI_XX NOT CODED!"
+                         else if (nnode == 4 .or. nnode == 9) then ! QUA_XX
+                                 call quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist)
+                         else
+                                 write(*,*) "INCORRECT ELEMENT TYPE (NODES ERROR)!"
+                         end if
+                 else if (ndime == 3) then
+                         write(*,*) "NOT CODED YET!"
+                 else
+                         write(*,*) "BY SIGMAR NO!"
+                 end if
 
-         !!   h = minval((/l12,l23,l34,l41/))
+                 do iedge = 1,nedge
+                    dist2(iedge) = sqrt(dot_product(dist(iedge,:),dist(iedge,:)))
+                 end do
+                 he = minval(dist2)
 
-         !!end subroutine char_length_qua
+         end subroutine char_length
 
 end module mod_geom
