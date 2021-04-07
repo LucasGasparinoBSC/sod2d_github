@@ -158,12 +158,16 @@ program unitt_mom_convec
         ! Compute Laplacian for comparison                                    !
         !*********************************************************************!
 
-        if (abs(sum(Rconvec)) .gt. 0.00000000000001d0) then
-                write(*,*) "|sum(Rconvec)| = ", abs(sum(Rconvec))
-                stop 1
-        else
-                write(*,*) "|sum(Rconvec)| = ", abs(sum(Rconvec))
-                write(*,*) "TEST PASSED!"
-        end if
+        do idime = 1,ndime
+           if (abs(sum(Rconvec(:,idime))) .gt. 0.00000000000001d0) then
+                   write(*,*) "idime = ",idime
+                   write(*,*) "|sum(Rconvec)| = ", abs(sum(Rconvec(:,idime)))
+                   stop 1
+           else
+                   write(*,*) "idime = ",idime
+                   write(*,*) "|sum(Rconvec)| = ", abs(sum(Rconvec(:,idime)))
+                   write(*,*) "TEST PASSED!"
+           end if
+        end do
 
 end program unitt_mom_convec
