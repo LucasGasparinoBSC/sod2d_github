@@ -52,7 +52,7 @@ module elem_convec
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode
-                      real(8)                 :: Re(nnode,ndime), aux(ndime,ngaus)
+                      real(8)                 :: Re(nnode,ndime), aux
                       real(8)                 :: el_q(nnode,ndime), el_u(nnode,ndime), el_pr(nnode)
 
                       Rmom = 0.0d0
@@ -64,20 +64,31 @@ module elem_convec
                          el_pr(1:nnode) = pr(ind)
                          do igaus = 1,ngaus
                             do inode = 1,nnode
-                               do jnode = 1,nnode
-                                  Re(inode,1) = Re(inode,1) + gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                     (gpcar(1,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,1))+ &
-                                     gpcar(2,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,2))+ &
-                                     gpcar(1,jnode,igaus,ielem)*el_pr(jnode))
-                                  Re(inode,2) = Re(inode,2) + gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                     (gpcar(1,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,1))+ &
-                                     gpcar(2,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,2))+ &
-                                     gpcar(2,jnode,igaus,ielem)*el_pr(jnode))
+                               do idime = 1,ndime
+                                  do jnode = 1,nnode
+                                     !
+                                     ! Compute div(qu) 
+                                     !
+                                     do jdime = 1,ndime
+                                        aux = gpcar(jdime,jnode,igaus,ielem)*el_q(jnode,idime)*el_u(jnode,jdime)
+                                     end do
+                                     Re(inode,idime) = gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
+                                             (aux+gpcar(idime,jnode,igaus,ielem)*el_pr(jnode))
+                                     !Re(inode,1) = Re(inode,1) + gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
+                                     !   (gpcar(1,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,1))+ &
+                                     !   gpcar(2,jnode,igaus,ielem)*(el_q(jnode,1)*el_u(jnode,2))+ &
+                                     !   gpcar(1,jnode,igaus,ielem)*el_pr(jnode))
+                                     !Re(inode,2) = Re(inode,2) + gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
+                                     !   (gpcar(1,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,1))+ &
+                                     !   gpcar(2,jnode,igaus,ielem)*(el_q(jnode,2)*el_u(jnode,2))+ &
+                                     !   gpcar(2,jnode,igaus,ielem)*el_pr(jnode))
+                                  end do
                                end do
                             end do
                          end do
-                         Rmom(ind,1) = Rmom(ind,1)+Re(1:nnode,1)
-                         Rmom(ind,2) = Rmom(ind,2)+Re(1:nnode,2)
+                         do idime = 1,ndime
+                            Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
+                         end do
                       end do
 
               end subroutine mom_convec

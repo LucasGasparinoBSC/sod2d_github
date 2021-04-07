@@ -5,4 +5,7 @@
 # See companion file LICENSE.txt.                                 #
 ###################################################################
 
+add_subdirectory(unitt_mass_convec)
+add_subdirectory(unitt_mom_convec)
 add_subdirectory(unitt_ener_convec)
+add_subdirectory(unitt_generic_scalar_convec)

@@ -142,9 +142,6 @@ program unitt_generic_scalar_convec
               gpvol(1,igaus,ielem) = wgp(igaus)*detJe
            end do
         end do
-        write(*,*) "detJ1 = ", sum(gpvol(1,:,1))
-        write(*,*) "detJ2 = ", sum(gpvol(1,:,2))
-        write(*,*) ""
 
         !*********************************************************************!
         ! Call convection subroutine                                          !
@@ -156,5 +153,13 @@ program unitt_generic_scalar_convec
         do ipoin = 1,npoin
            write(*,*) ipoin, Rconvec(ipoin)
         end do
+
+        if (abs(sum(Rconvec)) .gt. 0.00000000000001d0) then
+                write(*,*) "|sum(Rconvec)| = ", abs(sum(Rconvec))
+                stop 1
+        else
+                write(*,*) "|sum(Rconvec)| = ", abs(sum(Rconvec))
+                write(*,*) "TEST PASSED!"
+        end if
 
 end program unitt_generic_scalar_convec
