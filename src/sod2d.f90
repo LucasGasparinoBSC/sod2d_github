@@ -18,8 +18,8 @@ program sod2d
 
         integer(4)                 :: ndime, nnode, ngaus, nstep
         integer(4)                 :: idime, inode, igaus, istep
-        integer(4)                 :: nelem, npoin, nboun
-        integer(4)                 :: ielem, ipoin, iboun
+        integer(4)                 :: nelem, npoin, nboun, npbou
+        integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
         integer(4)                 :: flag_predic
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
@@ -43,14 +43,16 @@ program sod2d
         ! Basic data, hardcoded for now                                       !
         !*********************************************************************!
 
-        ndime = 2
-        nnode = 4
-        nstep = 100
+        write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
+        read(*,*) ndime
+        nnode = 4 ! TODO: need to allow for mixed elements...
+        npbou = 2 ! TODO: Need to get his from somewhere...
+        nstep = 100 ! TODO: Needs to be input...
         Rgas = 287.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0001d0
+        dt = 0.0001d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -61,10 +63,10 @@ program sod2d
         write(*,*) "--| ENTER NAME OF MESH RELATED FILES :"
         read(*,*) file_name
         call read_dims(file_path,file_name,npoin,nelem,nboun)
-        allocate(connec(nelem,4))
-        allocate(bound(nboun,2))
-        allocate(coord(npoin,2))
-        call read_geo_dat(file_path,file_name,npoin,nelem,nboun,connec,bound,coord)
+        allocate(connec(nelem,nnode))
+        allocate(bound(nboun,npbou))
+        allocate(coord(npoin,ndime))
+        call read_geo_dat(file_path,file_name,npoin,nelem,nboun,nnode,ndime,npbou,connec,bound,coord)
 
         !*********************************************************************!
         ! Generate list of "free" nodes                                       !
@@ -79,11 +81,13 @@ program sod2d
         ndof = 0
         do ipoin = 1,npoin
            do iboun = 1,nboun
-              if (bound(iboun,1) == ipoin .or. bound(iboun,2) == ipoin) then
-                 aux1(ipoin) = 0
-                 ndof = ndof+1
-                 exit
-              end if
+              do ipbou = 1,npbou
+                 if (bound(iboun,ipbou) == ipoin) then
+                    aux1(ipoin) = 0
+                    ndof = ndof+1
+                    exit
+                 end if
+              end do
            end do
         end do
         nbnodes = ndof
