@@ -72,40 +72,63 @@ program sod2d
         ! Generate list of "free" nodes                                       !
         !*********************************************************************!
 
+        !
+        ! TODO: there's a fucking bug here...
+        !
+
         allocate(aux1(npoin))
 
+        !
+        ! Fill aux1 with all nodes in order
+        !
         do ipoin = 1,npoin
            aux1(ipoin) = ipoin
         end do
 
-        ndof = 0
-        do ipoin = 1,npoin
-           do iboun = 1,nboun
-              do ipbou = 1,npbou
+        !
+        ! Zero aux1 entries that belong to a boundary
+        !
+        do ipoin = 1,npoin       ! Loop over all nodes to fill aux()
+           do iboun = 1,nboun    ! Loop over element edges belonging to a boundary
+              do ipbou = 1,npbou ! Loop over nodes on an element face belonging to a boundary
                  if (bound(iboun,ipbou) == ipoin) then
                     aux1(ipoin) = 0
-                    ndof = ndof+1
                     exit
                  end if
               end do
            end do
         end do
+
+        !
+        ! Determine how many nodes are boundary nodes
+        !
+        ndof = 0
+        do ipoin = 1,npoin
+           if (aux1(ipoin) == 0) then
+              ndof = ndof+1
+           end if
+        end do
+
         nbnodes = ndof
         ndof = npoin-ndof
         write(*,*) '--| TOTAL FREE NODES := ',ndof
+        write(*,*) '--| TOTAL BOUNDARY NODES := ',nbnodes
 
         allocate(ldof(ndof))
         allocate(lbnodes(nbnodes))
 
-        idof = 0
-        ibnodes = 0
+        !
+        ! Split aux1 into the 2 lists
+        !
+        idof = 0    ! Counter for free nodes
+        ibnodes = 0 ! Counter for boundary nodes
         do ipoin = 1,npoin
-           if (aux1(ipoin) .ne. 0) then
-              idof = idof+1
-              ldof(idof) = aux1(ipoin)
-           else
+           if (aux1(ipoin) == 0) then
               ibnodes = ibnodes+1
               lbnodes(ibnodes) = ipoin
+           else
+              idof = idof+1
+              ldof(idof) = aux1(ipoin)
            end if
         end do
 
