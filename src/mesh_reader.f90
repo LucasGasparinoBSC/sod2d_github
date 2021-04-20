@@ -1,5 +1,7 @@
 module mesh_reader
 
+      ! TODO: Read fix.bou
+
       contains
 
               subroutine read_dims(file_path,file_name,npoin,nelem,nboun)

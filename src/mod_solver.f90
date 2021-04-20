@@ -1,5 +1,7 @@
 module mod_solver
 
+      ! TODO: adapt for saprse matrix forms
+
       contains
 
               subroutine lumped_solver_scal(npoin,Ml,R)

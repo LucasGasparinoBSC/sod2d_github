@@ -1,5 +1,7 @@
 module mod_entropy_viscosity
 
+      ! TODO: Finish module and create unit tests
+
       contains
 
               subroutine residuals(nelem,ngaus,npoin,nnode,ndime, &
@@ -64,6 +66,9 @@ module mod_entropy_viscosity
               end subroutine residuals
 
               !subroutine smart_visc(nelem,nnode,ndime,npoin,connec,rho,u,p,mu_e)
+              !
+              !        ! TODO: Compute element size h
+              !
               !        implicit none
               !        do ielem = 1,nelem
               !           ind = connec(ielem,:)       ! Element indexes

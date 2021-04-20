@@ -72,10 +72,6 @@ program sod2d
         ! Generate list of "free" nodes                                       !
         !*********************************************************************!
 
-        !
-        ! TODO: there's a fucking bug here...
-        !
-
         allocate(aux1(npoin))
 
         !

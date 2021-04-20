@@ -1,5 +1,7 @@
 module elem_diffu
 
+      ! TODO: Create unit tests for all subroutines
+
       contains
 
               subroutine mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho,Rmass)
@@ -42,6 +44,7 @@ module elem_diffu
               subroutine mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Rmom)
 
                       ! TODO: Add. stab. viscosity
+                      ! TODO: Make 3D compatible
 
                       implicit none
 

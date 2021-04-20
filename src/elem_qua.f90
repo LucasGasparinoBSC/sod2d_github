@@ -2,7 +2,7 @@ module elem_qua
 
         contains
 
-                subroutine qua04(s,t,N,dN)
+                subroutine qua04(s,t,N,dN) ! QUA04 element
 
                         implicit none
 

@@ -53,12 +53,12 @@ program unitt_mom_convec
         allocate(u(npoin,ndime))  ! velocity
         allocate(q(npoin,ndime))  ! Momentum
         allocate(pr(npoin))       ! Pressure
-        u(1,:) = (/1.0, 1.0/)
-        u(2,:) = (/1.5, 1.5/)
-        u(3,:) = (/1.0, 1.0/)
-        u(4,:) = (/1.0, 1.0/)
-        u(5,:) = (/1.5, 1.5/)
-        u(6,:) = (/1.0, 1.0/)
+        u(1,:) = (/1.0d0, 1.0d0/)
+        u(2,:) = (/1.5d0, 1.5d0/)
+        u(3,:) = (/1.0d0, 1.0d0/)
+        u(4,:) = (/1.0d0, 1.0d0/)
+        u(5,:) = (/1.5d0, 1.5d0/)
+        u(6,:) = (/1.0d0, 1.0d0/)
         q = 1.20d0*u
         pr = 0.5d0
 
