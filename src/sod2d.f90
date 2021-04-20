@@ -187,10 +187,25 @@ program sod2d
 
         write(*,*) "--| GENERATING GAUSSIAN QUADRATURE TABLE..."
 
-        if (nnode == 4) then
-                ngaus = 4
-        else if (nnode == 9) then
-                ngaus = 9
+        ! TODO: allow for more element types...
+
+        if (ndime == 2) then
+           if (nnode == 3) then
+                   ngaus = 3
+                   write(*,*) 'NOT CODED YET!'
+                   STOP 1
+           else if (nnode == 6) then
+                   ngaus = 7
+                   write(*,*) 'NOT CODED YET!'
+                   STOP 1
+           else if (nnode == 4) then
+                   ngaus = 4
+           else if (nnode == 9) then
+                   ngaus = 9
+           end if
+        else if (ndime == 3) then
+                write (*,*) 'NOT CODED YET!'
+                STOP 1
         end if
         !ngaus = 1 ! Test value
 
@@ -202,6 +217,8 @@ program sod2d
         !*********************************************************************!
         ! Generate N and dN for all GP                                        !
         !*********************************************************************!
+
+        ! TODO: Allow for more element types
 
         write(*,*) "--| GENERATING SHAPE FUNCTIONS AND ISOPAR. DERIVATIVES..."
 
@@ -266,7 +283,7 @@ program sod2d
         allocate(Mc(npoin,npoin))
         call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
-        write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV, CONGR:'
+        write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
         read(*,*) solver_type
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
