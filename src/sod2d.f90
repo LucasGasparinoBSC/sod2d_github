@@ -11,17 +11,19 @@ program sod2d
         use mesh_reader
         use inicond_reader
         use mass_matrix
+        use mod_graph
 
         use time_integ
 
         implicit none
 
-        integer(4)                 :: ndime, nnode, ngaus, nstep
-        integer(4)                 :: idime, inode, igaus, istep
+        integer(4)                 :: ndime, nnode, ngaus, nstep, nzdom
+        integer(4)                 :: idime, inode, igaus, istep, izdom
         integer(4)                 :: nelem, npoin, nboun, npbou
         integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
         integer(4)                 :: flag_predic
+        integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
         integer(4), allocatable    :: aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:)
@@ -67,6 +69,19 @@ program sod2d
         allocate(bound(nboun,npbou))
         allocate(coord(npoin,ndime))
         call read_geo_dat(file_path,file_name,npoin,nelem,nboun,nnode,ndime,npbou,connec,bound,coord)
+
+        !*********************************************************************!
+        ! Create mesh graph for CSR matrices                                  !
+        !*********************************************************************!
+
+        allocate(rdom(npoin+1))                                          ! Implicit row indexing
+        allocate(aux_cdom(nelem*nnode*nnode))                            ! Preliminary cdom for subroutine
+        call compute_nzdom(npoin,nnode,nelem,connec,nzdom,rdom,aux_cdom) ! Computes nzdom, rdom and aux_cdom
+        allocate(cdom(nzdom))                                            ! Row indexes with proper array size
+        do izdom = 1,nzdom
+           cdom(izdom) = aux_cdom(izdom)
+        end do
+        deallocate(aux_cdom)
 
         !*********************************************************************!
         ! Generate list of "free" nodes                                       !
@@ -267,8 +282,10 @@ program sod2d
         end do
 
         !*********************************************************************!
-        ! Compute mass matrix (Lumped and Consistent) and set solver type      !
+        ! Compute mass matrix (Lumped and Consistent) and set solver type     !
         !*********************************************************************!
+
+        STOP 1
 
         write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
         allocate(Ml(npoin))
