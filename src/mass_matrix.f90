@@ -4,30 +4,53 @@ module mass_matrix
 
       contains
 
-              subroutine consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
+              subroutine consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
+
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      ! Forms Mc as a sparse CSR matrix, utilizing nzdom, rdom and cdom to          !
+                      ! compress the elemental matrices into the full sparse assembly structure.    !
+                      ! Mc is defined by A{int(Na*Nb*det(Je))}, where A{} is the assembly operator. !
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, nnode, npoin, ngaus
-                      integer(4), intent(in)  :: connec(nelem,nnode)
+                      integer(4), intent(in)  :: nelem, nnode, npoin, ngaus, nzdom
+                      integer(4), intent(in)  :: connec(nelem,nnode), rdom(npoin+1), cdom(nzdom)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode)
-                      real(8),    intent(out) :: Mc(npoin,npoin)
-                      integer(4)              :: ielem, igaus, inode, jnode, ind(nnode)
+                      real(8),    intent(out) :: Mc(nzdom)
+                      integer(4)              :: ielem, igaus, inode, jnode, lnode(nnode), izdom, ipoin
                       real(8)                 :: Me(nnode,nnode)
 
+                      !
+                      ! Initialize Mc to zeros
+                      !
                       Mc = 0.0d0
+
+                      !
+                      ! Loop over all elements to form Mc_e(nnode,nnode)
+                      !
                       do ielem = 1,nelem
-                         ind(1:nnode) = connec(ielem,1:nnode)
+                         lnode(1:nnode) = connec(ielem,1:nnode) ! get elemental indices
+                         !
+                         ! Form Mc_e with Gaussian quadrature (open)
+                         !
                          Me = 0.0d0
-                         do igaus = 1,ngaus
-                            do inode = 1,nnode
-                               do jnode = 1,nnode
+                         do igaus = 1,ngaus ! Loop over Gauss points
+                            do inode = 1,nnode ! Loop over element nodes (row)
+                               do jnode = 1,nnode ! Loop over element nodex (column)
                                   Me(inode,jnode) = Me(inode,jnode) + &
-                                     gpvol(1,igaus,ielem)*Ngp(igaus,inode)*Ngp(igaus,jnode)
+                                     gpvol(1,igaus,ielem)*Ngp(igaus,inode)*Ngp(igaus,jnode) ! Gaussian quad.
                                end do
                             end do
                          end do
-                         Mc(ind,ind) = Mc(ind,ind)+Me
+                         !
+                         ! Assemble Mc_e to CSR Mc
+                         !
+                         do inode = 1,nnode
+                            ipoin = lnode(inode) ! Row of Mc
+                            izdom = rdom(ipoin)+1
+                            print*, izdom
+                         end do
                       end do
 
               end subroutine consistent_mass

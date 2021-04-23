@@ -44,5 +44,5 @@ enable_testing()
 ADD_SUBDIRECTORY(unitt)
 
 # Compile
-file(GLOB_RECURSE sources src/*.f90) # Adds all files to compilation list, with dependencies pre analyzed by CMake
+file(GLOB sources src/*.f90 src/main/*.f90) # Adds all files to compilation list, with dependencies pre analyzed by CMake
 add_executable(sod2d.x ${sources})   # Build executable from listed sources

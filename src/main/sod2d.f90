@@ -33,7 +33,7 @@ program sod2d
         real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
         real(8),    allocatable    :: dxN(:,:), gpcar(:,:,:,:), gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
-        real(8),    allocatable    :: Mc(:,:), Ml(:)
+        real(8),    allocatable    :: Mc(:), Ml(:)
         real(8)                    :: s, t, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
         real(8)                    :: dt, cfl
@@ -285,16 +285,15 @@ program sod2d
         ! Compute mass matrix (Lumped and Consistent) and set solver type     !
         !*********************************************************************!
 
-        STOP 1
-
         write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
         allocate(Ml(npoin))
         call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         solver_type = 'LUMSO'
 
         write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
-        allocate(Mc(npoin,npoin))
-        call consistent_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Mc)
+        allocate(Mc(nzdom))
+        call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
+        STOP 1
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
         read(*,*) solver_type
