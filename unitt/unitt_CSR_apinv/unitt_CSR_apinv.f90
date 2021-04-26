@@ -58,7 +58,16 @@ program unitt_CSR_apinv
         ! Call CSR apinv solver
         !
         call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
+        write(*,*) '--| sum(R) = ',sum(R)
 
-        write(*,*) R
+        if (sum(R) .gt. 2.333333333d0+0.001d0) then
+                write(*,*) '--| sum(R) = ',sum(R)
+                write(*,*) '--| APINV SOLVER FAILED!'
+                STOP 1
+        else if (sum(R) .lt. 2.333333333d0-0.001d0) then
+                write(*,*) '--| sum(R) = ',sum(R)
+                write(*,*) '--| APINV SOLVER FAILED!'
+                STOP 1
+        end if
 
 end program unitt_CSR_apinv
