@@ -31,28 +31,33 @@ module mod_solver
 
               end subroutine lumped_solver_vect
 
-              subroutine approx_inverse_scalar(npoin,Ml,Mc,R)
+              subroutine approx_inverse_scalar(npoin,nzdom,rdom,cdom,Ml,Mc,R)
 
                       implicit none
 
-                      integer(4), intent(in)       :: npoin
-                      real(8),    intent(in)       :: Ml(npoin), Mc(npoin,npoin)
+                      integer(4), intent(in)       :: npoin, nzdom
+                      integer(4), intent(in)       :: rdom(npoin+1), cdom(nzdom)
+                      real(8),    intent(in)       :: Ml(npoin), Mc(nzdom)
                       real(8),    intent(inout)    :: R(npoin)
-                      integer(4)                   :: ipoin, jpoin, ipow, ppow
+                      integer(4)                   :: ipoin, jpoin, ipow, ppow, izdom, rowb, rowe
                       real(8),    dimension(npoin) :: b, v, x
-                      real(8)                      :: Ar(npoin,npoin)
+                      real(8)                      :: Ar(nzdom)
 
                       !
                       ! Compute Ar
                       !
                       Ar = Mc
+
                       do ipoin = 1,npoin
-                         do jpoin = 1,npoin
-                            if (jpoin == ipoin) then
-                               Ar(ipoin,jpoin) = 1.0d0-(Ar(ipoin,jpoin)/Ml(ipoin))
+                         rowb = rdom(ipoin)+1
+                         rowe = rdom(ipoin+1)
+                         do izdom = rowb,rowe
+                            if(cdom(izdom) == ipoin) then
+                               Ar(izdom) = Ml(ipoin)-Ar(izdom)
                             else
-                               Ar(ipoin,jpoin) = -(Ar(ipoin,jpoin)/Ml(ipoin))
+                               Ar(izdom) = -Ar(izdom)
                             end if
+                            Ar(izdom) = Ar(izdom)/Ml(ipoin)
                          end do
                       end do
 
@@ -68,35 +73,40 @@ module mod_solver
                       !
                       ppow = 1
                       do ipow = 1,ppow
-                         v = matmul(Ar,v)
+                         call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,v,b)
+                         v = b
                          x = x+v
                       end do
                       R = x
 
               end subroutine approx_inverse_scalar
 
-              subroutine approx_inverse_vect(ndime,npoin,Ml,Mc,R)
+              subroutine approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,Ml,Mc,R)
 
                       implicit none
 
-                      integer(4), intent(in)       :: ndime, npoin
-                      real(8),    intent(in)       :: Ml(npoin), Mc(npoin,npoin)
+                      integer(4), intent(in)       :: ndime, npoin, nzdom
+                      integer(4), intent(in)       :: rdom(npoin+1), cdom(nzdom)
+                      real(8),    intent(in)       :: Ml(npoin), Mc(nzdom)
                       real(8),    intent(inout)    :: R(npoin,ndime)
-                      integer(4)                   :: idime, ipoin, jpoin, ipow, ppow
+                      integer(4)                   :: idime, ipoin, jpoin, ipow, ppow, izdom, rowb, rowe
                       real(8),    dimension(npoin) :: b, v, x
-                      real(8)                      :: Ar(npoin,npoin)
+                      real(8)                      :: Ar(nzdom)
 
                       !
                       ! Compute Ar
                       !
                       Ar = Mc
                       do ipoin = 1,npoin
-                         do jpoin = 1,npoin
-                            if (jpoin == ipoin) then
-                               Ar(ipoin,jpoin) = 1.0d0-(Ar(ipoin,jpoin)/Ml(ipoin))
+                         rowb = rdom(ipoin)+1
+                         rowe = rdom(ipoin+1)
+                         do izdom = rowb,rowe
+                            if(cdom(izdom) == ipoin) then
+                               Ar(izdom) = Ml(ipoin)-Ar(izdom)
                             else
-                               Ar(ipoin,jpoin) = -(Ar(ipoin,jpoin)/Ml(ipoin))
+                               Ar(izdom) = -Ar(izdom)
                             end if
+                            Ar(izdom) = Ar(izdom)/Ml(ipoin)
                          end do
                       end do
 
@@ -113,12 +123,41 @@ module mod_solver
                          !
                          ppow = 1
                          do ipow = 1,ppow
-                            v = matmul(Ar,v)
+                            call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,v,b)
+                            v = b
                             x = x+v
                          end do
                          R(:,idime) = x
                       end do
 
               end subroutine approx_inverse_vect
+
+              subroutine CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,v,u)
+
+                      implicit none
+
+                      integer(4), intent(in)  :: npoin, nzdom
+                      integer(4), intent(in)  :: rdom(npoin+1), cdom(nzdom)
+                      real(8),    intent(in)  :: Mc(nzdom), v(npoin)
+                      real(8),    intent(out) :: u(npoin)
+                      integer(4)              :: ipoin, izdom, jpoin, rowb, rowe
+
+                      u = 0.0d0
+                      do ipoin = 1,npoin
+                         !
+                         ! Get CSR section for row ipoin
+                         !
+                         rowb = rdom(ipoin)+1
+                         rowe = rdom(ipoin+1)
+                         !
+                         ! Loop inside CSR section
+                         !
+                         do izdom = rowb,rowe
+                            jpoin = cdom(izdom) ! Col. index
+                            u(ipoin) = u(ipoin)+Mc(izdom)*v(jpoin) ! Dot product
+                         end do
+                      end do
+
+              end subroutine CSR_SpMV_scal
 
 end module mod_solver

@@ -74,6 +74,7 @@ program sod2d
         ! Create mesh graph for CSR matrices                                  !
         !*********************************************************************!
 
+        write(*,*) "--| PERFORMING GRAPH OPERATIONS..."
         allocate(rdom(npoin+1))                                          ! Implicit row indexing
         allocate(aux_cdom(nelem*nnode*nnode))                            ! Preliminary cdom for subroutine
         call compute_nzdom(npoin,nnode,nelem,connec,nzdom,rdom,aux_cdom) ! Computes nzdom, rdom and aux_cdom
@@ -82,11 +83,13 @@ program sod2d
            cdom(izdom) = aux_cdom(izdom)
         end do
         deallocate(aux_cdom)
+        write(*,*) "--| END OF GRAPH OPERATIONS!"
 
         !*********************************************************************!
         ! Generate list of "free" nodes                                       !
         !*********************************************************************!
 
+        write(*,*) "--| SPLITTING BOUNDARY NODES FROM DOFs..."
         allocate(aux1(npoin))
 
         !
@@ -147,6 +150,7 @@ program sod2d
         ! Allocate variables                                                  !
         !*********************************************************************!
 
+        WRITE(*,*) "--| ALLOCATING MAIN VARIABLES"
         !
         ! Last rank is for prediction-advance related to entropy viscosity,
         ! where 1 is prediction, 2 is final value
@@ -293,11 +297,11 @@ program sod2d
         write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
         allocate(Mc(nzdom))
         call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
-        STOP 1
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
         read(*,*) solver_type
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
+        STOP 1
 
         !*********************************************************************!
         ! Start of time stepping                                              !
@@ -320,7 +324,7 @@ program sod2d
            e_int(:,1) = e_int(:,2)
 
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                     nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
                      rho,u,q,pr,E,Tem,e_int)
 
            !
@@ -328,7 +332,7 @@ program sod2d
            !
            flag_predic = 0
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                     nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
                      rho,u,q,pr,E,Tem,e_int)
 
         end do
