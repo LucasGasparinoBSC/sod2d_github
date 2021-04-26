@@ -1,7 +1,5 @@
 module mod_solver
 
-      ! TODO: adapt for saprse matrix forms
-
       contains
 
               subroutine lumped_solver_scal(npoin,Ml,R)
@@ -31,15 +29,15 @@ module mod_solver
 
               end subroutine lumped_solver_vect
 
-              subroutine approx_inverse_scalar(npoin,nzdom,rdom,cdom,Ml,Mc,R)
+              subroutine approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
 
                       implicit none
 
-                      integer(4), intent(in)       :: npoin, nzdom
+                      integer(4), intent(in)       :: npoin, nzdom, ppow
                       integer(4), intent(in)       :: rdom(npoin+1), cdom(nzdom)
                       real(8),    intent(in)       :: Ml(npoin), Mc(nzdom)
                       real(8),    intent(inout)    :: R(npoin)
-                      integer(4)                   :: ipoin, jpoin, ipow, ppow, izdom, rowb, rowe
+                      integer(4)                   :: ipoin, jpoin, ipow, izdom, rowb, rowe
                       real(8),    dimension(npoin) :: b, v, x
                       real(8)                      :: Ar(nzdom)
 
@@ -61,6 +59,11 @@ module mod_solver
                          end do
                       end do
 
+                      !write(*,*) 18.0d0*Ar(1:8)
+                      !write(*,*) 18.0d0*Ar(9:17)
+                      !write(*,*) 18.0d0*Ar(18:25)
+                      !write(*,*) 18.0d0*Ar(26:28)
+
                       !
                       ! Initialize series at k=0
                       !
@@ -71,9 +74,8 @@ module mod_solver
                       !
                       ! Step over sucessive powers
                       !
-                      ppow = 1
                       do ipow = 1,ppow
-                         call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,v,b)
+                         call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                          v = b
                          x = x+v
                       end do
@@ -81,15 +83,15 @@ module mod_solver
 
               end subroutine approx_inverse_scalar
 
-              subroutine approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,Ml,Mc,R)
+              subroutine approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
 
                       implicit none
 
-                      integer(4), intent(in)       :: ndime, npoin, nzdom
+                      integer(4), intent(in)       :: ndime, npoin, nzdom, ppow
                       integer(4), intent(in)       :: rdom(npoin+1), cdom(nzdom)
                       real(8),    intent(in)       :: Ml(npoin), Mc(nzdom)
                       real(8),    intent(inout)    :: R(npoin,ndime)
-                      integer(4)                   :: idime, ipoin, jpoin, ipow, ppow, izdom, rowb, rowe
+                      integer(4)                   :: idime, ipoin, jpoin, ipow, izdom, rowb, rowe
                       real(8),    dimension(npoin) :: b, v, x
                       real(8)                      :: Ar(nzdom)
 
@@ -121,9 +123,8 @@ module mod_solver
                          !
                          ! Step over sucessive powers
                          !
-                         ppow = 1
                          do ipow = 1,ppow
-                            call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,v,b)
+                            call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                             v = b
                             x = x+v
                          end do

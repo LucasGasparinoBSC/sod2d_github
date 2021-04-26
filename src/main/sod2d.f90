@@ -22,6 +22,7 @@ program sod2d
         integer(4)                 :: nelem, npoin, nboun, npbou
         integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
+        integer(4)                 :: ppow
         integer(4)                 :: flag_predic
         integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
@@ -300,6 +301,10 @@ program sod2d
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
         read(*,*) solver_type
+        if (solver_type == 'APINV') then
+                write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
+                read(*,*) ppow
+        end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
         STOP 1
 
@@ -324,7 +329,7 @@ program sod2d
            e_int(:,1) = e_int(:,2)
 
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
                      rho,u,q,pr,E,Tem,e_int)
 
            !
@@ -332,7 +337,7 @@ program sod2d
            !
            flag_predic = 0
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
                      rho,u,q,pr,E,Tem,e_int)
 
         end do

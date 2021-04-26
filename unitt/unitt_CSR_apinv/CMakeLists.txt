@@ -5,7 +5,7 @@ get_filename_component(projectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 
 project(${projectId} LANGUAGES Fortran)
 #file(GLOB_RECURSE SRC_FILES ${CMAKE_HOME_DIRECTORY}/src/*.f90)
-file(GLOB SRC_FILES ${CMAKE_HOME_DIRECTORY}/src/mod_solver.f90 ${CMAKE_HOME_DIRECTORY}/unitt/unitt_CSR_SPMV_scal/*.f90)
+file(GLOB SRC_FILES ${CMAKE_HOME_DIRECTORY}/src/mod_solver.f90 ${CMAKE_HOME_DIRECTORY}/unitt/unitt_CSR_apinv/*.f90)
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})   # Build executable from listed sources
 

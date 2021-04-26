@@ -5,7 +5,7 @@ module mod_entropy_viscosity
       contains
 
               subroutine residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
-                                   rdom, cdom, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+                                   rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rhok, uk, prk, qk, &
                                    rho, u, pr, q, &
                                    Reta, Rrho)
@@ -15,7 +15,7 @@ module mod_entropy_viscosity
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime, nzdom
+                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime, nzdom, ppow
                       integer(4), intent(in)  :: connec(nelem,nnode), rdom(npoin+1), cdom(nzdom)
                       real(8),    intent(in)  :: Ngp(nnode,ngaus), gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ml(npoin), Mc(nzdom)
@@ -56,9 +56,9 @@ module mod_entropy_viscosity
                        Reta = 0.0d0 ! Entropy residual
                        Rrho = 0.0d0 ! Mass residual
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_eta,Reta)    ! Entropy convec
-                       call approx_inverse_scalar(npoin,nzdom,rdom,cdom,Ml,Mc,Reta)
+                       call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho) ! Mass convec
-                       call approx_inverse_scalar(npoin,nzdom,rdom,cdom,Ml,Mc,Rrho)
+                       call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rrho)
 
                        Reta = Reta+R1
                        Rrho = Rrho+R2
