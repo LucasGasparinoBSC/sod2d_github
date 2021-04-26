@@ -81,4 +81,12 @@ program unitt_CSR_mc
         allocate(Mc(nzdom))
         call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
 
+        if (sum(Mc) .gt. 8.0d0+0.00000000001d0) then
+                write(*,*) '--| ERROR IN FORMING Mc CSR!'
+                stop 1
+        else if (sum(Mc) .lt. 8.0d0-0.00000000001d0) then
+                write(*,*) '--| ERROR IN FORMING Mc CSR!'
+                stop 1
+        end if
+
 end program unitt_CSR_mc

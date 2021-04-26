@@ -18,7 +18,8 @@ module mass_matrix
                       integer(4), intent(in)  :: connec(nelem,nnode), rdom(npoin+1), cdom(nzdom)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode)
                       real(8),    intent(out) :: Mc(nzdom)
-                      integer(4)              :: ielem, igaus, inode, jnode, lnode(nnode), izdom, ipoin
+                      integer(4)              :: ielem, igaus, inode, jnode, lnode(nnode), izdom, ipoin, jpoin
+                      integer(4)              :: jzdom, rowb, rowe
                       real(8)                 :: Me(nnode,nnode)
 
                       !
@@ -47,9 +48,22 @@ module mass_matrix
                          ! Assemble Mc_e to CSR Mc
                          !
                          do inode = 1,nnode
-                            ipoin = lnode(inode) ! Row of Mc
-                            izdom = rdom(ipoin)+1
-                            print*, izdom
+                            ipoin = lnode(inode) ! Global node/Mc row index
+                            rowb = rdom(ipoin)+1 ! Start of izdom for cdom
+                            rowe = rdom(ipoin+1) ! end of izdom for cdom
+                            do jnode = 1,nnode
+                               jpoin = lnode(jnode) ! Nodes associated with ipoin on ielem
+                               !
+                               ! Loop over section of cdom to find out izdom
+                               !
+                               do jzdom = rowb,rowe
+                                  if (cdom(jzdom) == jpoin) then
+                                     izdom = jzdom
+                                     exit
+                                  end if
+                               end do
+                               Mc(izdom) = Mc(izdom) + Me(inode,jnode)
+                            end do
                          end do
                       end do
 
