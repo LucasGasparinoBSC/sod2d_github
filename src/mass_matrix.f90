@@ -1,7 +1,5 @@
 module mass_matrix
 
-      ! TODO: create in sparse format
-
       contains
 
               subroutine consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
