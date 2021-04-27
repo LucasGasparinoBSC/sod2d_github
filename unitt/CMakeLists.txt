@@ -7,6 +7,7 @@
 
 add_subdirectory(unitt_mass_convec)
 add_subdirectory(unitt_mom_convec)
+add_subdirectory(unitt_mom_diffu)
 add_subdirectory(unitt_ener_convec)
 add_subdirectory(unitt_generic_scalar_convec)
 add_subdirectory(unitt_3d_jacobian_inverse)

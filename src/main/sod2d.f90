@@ -22,7 +22,7 @@ program sod2d
         integer(4)                 :: nelem, npoin, nboun, npbou
         integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
-        integer(4)                 :: ppow
+        integer(4)                 :: ppow, porder
         integer(4)                 :: flag_predic
         integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
@@ -49,6 +49,7 @@ program sod2d
         write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
         read(*,*) ndime
         nnode = 4 ! TODO: need to allow for mixed elements...
+        porder = 1 ! Element order
         npbou = 2 ! TODO: Need to get his from somewhere...
         nstep = 100 ! TODO: Needs to be input...
         Rgas = 287.00d0
@@ -205,21 +206,21 @@ program sod2d
 
         ! TODO: allow for more element types...
 
-        if (ndime == 2) then
-           if (nnode == 3) then
+        if (ndime == 2) then ! 2D elements
+           if (nnode == 3) then ! TRI03
                    ngaus = 3
                    write(*,*) 'NOT CODED YET!'
                    STOP 1
-           else if (nnode == 6) then
+           else if (nnode == 6) then ! TRI06
                    ngaus = 7
                    write(*,*) 'NOT CODED YET!'
                    STOP 1
-           else if (nnode == 4) then
+           else if (nnode == 4) then ! QUA04
                    ngaus = 4
-           else if (nnode == 9) then
+           else if (nnode == 9) then ! QUA09
                    ngaus = 9
            end if
-        else if (ndime == 3) then
+        else if (ndime == 3) then ! 3D elements
                 write (*,*) 'NOT CODED YET!'
                 STOP 1
         end if
@@ -228,7 +229,23 @@ program sod2d
         allocate(xgp(ngaus,ndime))
         allocate(wgp(ngaus))
 
-        call gll_qua(ndime,ngaus,xgp,wgp)
+        if (ndime == 2) then
+           if (nnode == (porder+1)**2) then ! QUA_XX of order porder
+              call gll_qua(ndime,ngaus,xgp,wgp)
+           else if (nnode == 3 .or. nnode == 6 .or. nnode == 10) then ! TRI_XX
+              write(*,*) '--| NOT CODED YET!'
+              STOP 1
+           end if
+        else if (ndime == 3) then
+           if (nnode == (porder+1)**3) then ! HEX_XX
+              !call gll_hex(ndime,ngaus,xgp,wgp)
+              write(*,*) '--| NOT CODED YET!'
+              STOP 1
+           else if (nnode == 4 .or. nnode == 10 .or. nnode == 20) then ! TET_XX
+              write(*,*) '--| NOT CODED YET!'
+              STOP 1
+           end if
+        end if
 
         !*********************************************************************!
         ! Generate N and dN for all GP                                        !
@@ -244,7 +261,18 @@ program sod2d
         do igaus = 1,ngaus
            s = xgp(igaus,1)
            t = xgp(igaus,2)
-           call qua04(s,t,N,dN)
+           if (ndime == 2) then
+              if (nnode == 4) then
+                 call qua04(s,t,N,dN)
+              else if (nnode == 9) then
+                 !call qua09(s,t,N,dN)
+                 write(*,*) '--| NOT CODED YET!'
+                 STOP 1
+              end if
+           else if (ndime == 3) then
+              write(*,*) '--| 3D ELEMENTS NOT YET CODED!'
+              STOP 1
+           end if
            Ngp(igaus,:) = N
            dNgp(:,:,igaus) = dN
         end do

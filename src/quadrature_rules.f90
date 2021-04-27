@@ -36,4 +36,12 @@ module quadrature_rules
 
                 end subroutine gll_qua
 
+                !subroutine gll_hex()
+                !        implicit none
+                !        if (ngaus == 1) then
+                !        else if (ngaus == 8) then
+                !        else if (ngaus == 27) then
+                !        end if
+                !end subroutine gll_hex
+
 end module quadrature_rules

@@ -44,7 +44,6 @@ module elem_diffu
               subroutine mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Rmom)
 
                       ! TODO: Add. stab. viscosity
-                      ! TODO: Make 3D compatible
 
                       implicit none
 
@@ -80,8 +79,9 @@ module elem_diffu
                                end do
                             end do
                          end do
-                         Rmom(ind,1) = Rmom(ind,1)+Re(1:nnode,1)
-                         Rmom(ind,2) = Rmom(ind,2)+Re(1:nnode,2)
+                         do idime = 1,ndime
+                            Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
+                         end do
                       end do
 
               end subroutine mom_diffusion
