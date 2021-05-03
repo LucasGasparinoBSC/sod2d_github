@@ -1,7 +1,5 @@
 module mod_geom
 
-      ! TODO: Finish it ffs...
-
       use elem_qua
 
       contains
@@ -14,14 +12,16 @@ module mod_geom
                  real(8),    intent(in)  :: coord(npoin,ndime)
                  real(8),    intent(out) :: he
                  integer(4)              :: iedge, ncorner, nedge
-                 real(8)                 :: dist(12,ndime), dist2(12)
+                 real(8)                 :: dist(12,ndime), dist2, aux
 
-                 dist = 0.0d0
+                 !
+                 ! Compute r = x2-x1 for all element edges
+                 !
                  if (ndime == 2) then
                          if (nnode == 3 .or. nnode == 6) then ! TRI_XX
                                  write(*,*) "ELEMENT TRI_XX NOT CODED!"
                          else if (nnode == 4 .or. nnode == 9) then ! QUA_XX
-                                 call quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist)
+                                 call quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:nnode,1:ndime))
                          else
                                  write(*,*) "INCORRECT ELEMENT TYPE (NODES ERROR)!"
                          end if
@@ -31,10 +31,15 @@ module mod_geom
                          write(*,*) "BY SIGMAR NO!"
                  end if
 
+                 !
+                 ! Obtain ||dist||_2 for all edges and select minimum size as elem. characteristic size
+                 !
+                 dist2 = 1000000000000000000000000000000000000000000000000000000000000000000000.0d0
                  do iedge = 1,nedge
-                    dist2(iedge) = sqrt(dot_product(dist(iedge,:),dist(iedge,:)))
+                    aux = sqrt(dot_product(dist(iedge,:),dist(iedge,:)))
+                    dist2 = min(dist2,aux)
                  end do
-                 he = minval(dist2)
+                 he = dist2
 
          end subroutine char_length
 

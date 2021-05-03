@@ -12,6 +12,7 @@ program sod2d
         use inicond_reader
         use mass_matrix
         use mod_graph
+        use mod_geom
 
         use time_integ
 
@@ -27,7 +28,7 @@ program sod2d
         integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
         integer(4), allocatable    :: aux1(:)
-        real(8),    allocatable    :: coord(:,:), elcod(:,:)
+        real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
         real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
         real(8),    allocatable    :: Je(:,:), He(:,:)
@@ -37,7 +38,7 @@ program sod2d
         real(8),    allocatable    :: Mc(:), Ml(:)
         real(8)                    :: s, t, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
-        real(8)                    :: dt, cfl
+        real(8)                    :: dt, cfl, he_aux
         character(500)             :: file_path
         character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
@@ -71,6 +72,17 @@ program sod2d
         allocate(bound(nboun,npbou))
         allocate(coord(npoin,ndime))
         call read_geo_dat(file_path,file_name,npoin,nelem,nboun,nnode,ndime,npbou,connec,bound,coord)
+
+        !*********************************************************************!
+        ! Compute characteristic size of elements                             !
+        !*********************************************************************!
+
+        allocate(helem(nelem))
+        do ielem = 1,nelem
+           call char_length(ielem,nelem,nnode,npoin,ndime,connec,coord,he_aux)
+           helem(ielem) = he_aux
+           print*, ielem, helem(ielem)
+        end do
 
         !*********************************************************************!
         ! Create mesh graph for CSR matrices                                  !
@@ -334,7 +346,7 @@ program sod2d
                 read(*,*) ppow
         end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
-        STOP 1
+        STOP 0
 
         !*********************************************************************!
         ! Start of time stepping                                              !

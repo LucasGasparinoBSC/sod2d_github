@@ -1,8 +1,21 @@
 module elem_convec
 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! Computes convective term for Euler/NS equation system, as well             !
+      ! as for any generic scalar transport that might occur. Based                !
+      ! on Ljunkvist matrix-free implementation (assembles only rhs vector).       !
+      ! This module can be passed to CUDA in order to do fine-grained parallelism. !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
       contains
 
               subroutine mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q,Rmass)
+
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      ! Subroutine to compute R = div(rho*u) using a standard Continuous  !
+                      ! Galerkin formulation. In the above, rho is the scalar sensity and !
+                      ! u is the vector of velocities in all dimensions.                  !
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                       implicit none
 
@@ -22,6 +35,9 @@ module elem_convec
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          el_q(1:nnode,1:ndime) = q(ind,1:ndime)
+                         !
+                         ! Quadrature
+                         !
                          do igaus = 1,ngaus
                             do inode = 1,nnode
                                do idime = 1,ndime
@@ -32,12 +48,22 @@ module elem_convec
                                end do
                             end do
                          end do
+                         !
+                         ! Assembly
+                         !
                          Rmass(ind) = Rmass(ind)+Re(1:nnode)
                       end do
 
               end subroutine mass_convec
 
               subroutine mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,q,pr,Rmom)
+
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      ! Subroutine to compute R = div(q*u) using a standard Continuous   !
+                      ! Galerkin formulation. In the above, q is the momentum vector and !
+                      ! u is the vector of velocities in all dimensions. The product     !
+                      ! inside div() is an outer tensor product between the 2 vectors.   !
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                       implicit none
 
@@ -75,6 +101,9 @@ module elem_convec
                                   end do
                                   grpgp(idime,igaus) = grpgp(idime,igaus)+gpcar(idime,jnode,igaus,ielem)*el_pr(jnode)
                                end do
+                               !
+                               ! Quadrature
+                               !
                                do inode = 1,nnode
                                   Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
                                           (divgp(idime,igaus)+grpgp(idime,igaus))
@@ -93,6 +122,13 @@ module elem_convec
 
               subroutine ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,pr,E,Rener)
 
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      ! Subroutine to compute R = div(u*(E+p)) using a standard Continuous !
+                      ! Galerkin formulation. In the above, E is the scalar total energy,  !
+                      ! p is the scalar pressure and u is the vector of velocities in all  !
+                      ! dimensions.                                                        !
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
                       implicit none
 
                       integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
@@ -107,6 +143,9 @@ module elem_convec
                       real(8)                 :: Re(nnode), fener(npoin,ndime)
                       real(8)                 :: el_fener(nnode,ndime)
 
+                      !
+                      ! Flux f = u*(E+p)
+                      !
                       do ipoin = 1,npoin
                          fener(ipoin,1:ndime) = u(ipoin,1:ndime)*(E(ipoin)+pr(ipoin))
                       end do
@@ -116,6 +155,9 @@ module elem_convec
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          el_fener(1:nnode,1:ndime) = fener(ind,1:ndime)
+                         !
+                         ! Quadrature
+                         !
                          do igaus = 1,ngaus
                             do inode = 1,nnode
                                do idime = 1,ndime
@@ -126,6 +168,9 @@ module elem_convec
                                end do
                             end do
                          end do
+                         !
+                         ! Assembly
+                         !
                          Rener(ind) = Rener(ind)+Re(1:nnode)
                       end do
 
@@ -151,6 +196,9 @@ module elem_convec
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          el_q(1:nnode,1:ndime) = q(ind,1:ndime)
+                         !
+                         ! Quadrature
+                         !
                          do igaus = 1,ngaus
                             do inode = 1,nnode
                                do idime = 1,ndime
@@ -161,6 +209,9 @@ module elem_convec
                                end do
                             end do
                          end do
+                         !
+                         ! Assembly
+                         !
                          Rconvec(ind) = Rconvec(ind)+Re(1:nnode)
                       end do
 
