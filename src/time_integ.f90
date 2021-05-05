@@ -3,12 +3,13 @@ module time_integ
       use elem_convec
       use elem_diffu
       use mod_solver
+      use mod_entropy_viscosity
 
       contains
 
               subroutine rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                               ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                              rho,u,q,pr,E,Tem,e_int)
+                              helem, rho,u,q,pr,E,Tem,e_int)
 
                       implicit none
 
@@ -18,7 +19,7 @@ module time_integ
                       integer(4), intent(in)             :: nzdom, rdom(npoin+1), cdom(nzdom), ppow
                       real(8),    intent(in)             :: Ngp(ngaus,nnode), gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)             :: gpvol(1,ngaus,nelem)
-                      real(8),    intent(in)             :: dt
+                      real(8),    intent(in)             :: dt, helem(nelem)
                       real(8),    intent(in)             :: Ml(npoin)
                       real(8),    intent(in)             :: Mc(nzdom)
                       real(8),    intent(inout)          :: rho(npoin,2)
@@ -40,8 +41,9 @@ module time_integ
                       real(8),    dimension(npoin)       :: Rmass_1, Rmass_2, Rmass_3, Rmass_4
                       real(8),    dimension(npoin)       :: Rener_1, Rener_2, Rener_3, Rener_4
                       real(8),    dimension(npoin,ndime) :: Rmom_1, Rmom_2, Rmom_3, Rmom_4
-                      real(8),    dimension(npoin)       :: aux_mass, aux_ener
+                      real(8),    dimension(npoin)       :: aux_mass, aux_ener, Reta, Rrho
                       real(8),    dimension(npoin,ndime) :: aux_mom
+                      real(8)                            :: mu_e(nelem)
                       real(8)                            :: Rdiff_scal(npoin), Rdiff_vect(npoin,ndime)
 
                       !
@@ -71,7 +73,22 @@ module time_integ
                       ! Entropy viscosity update
                       !
                       if (flag_predic == 0) then
-                         ! call smartvisc
+
+                         !
+                         ! Compute Reta and Rrho for selector
+                         !
+                         call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
+                                   rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+                                   dt, rho_1, u_1, pr_1, q_1, &
+                                   rho, u, pr, q, &
+                                   Reta, Rrho)
+
+                         !
+                         ! Compute entropy viscosity
+                         !
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho,u,pr,helem,mu_e)
+                         STOP 0
+
                       end if
 
                       !

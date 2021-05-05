@@ -1,4 +1,4 @@
-program sod2d
+program unitt_entropy_viscosity
 
         !*********************************************************************!
         ! Computes the sod shock tube problem over a 2D domain using FEM.     !
@@ -13,8 +13,7 @@ program sod2d
         use mass_matrix
         use mod_graph
         use mod_geom
-
-        use time_integ
+        use mod_entropy_viscosity
 
         implicit none
 
@@ -35,7 +34,7 @@ program sod2d
         real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
         real(8),    allocatable    :: dxN(:,:), gpcar(:,:,:,:), gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
-        real(8),    allocatable    :: Mc(:), Ml(:)
+        real(8),    allocatable    :: Mc(:), Ml(:), Reta(:), Rrho(:)
         real(8)                    :: s, t, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
         real(8)                    :: dt, cfl, he_aux
@@ -47,26 +46,23 @@ program sod2d
         ! Basic data, hardcoded for now                                       !
         !*********************************************************************!
 
-        write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
-        read(*,*) ndime
-        nnode = 4 ! TODO: need to allow for mixed elements...
-        porder = 1 ! Element order
-        npbou = 2 ! TODO: Need to get his from somewhere...
-        nstep = 1 ! TODO: Needs to be input...
+        ndime = 2
+        nnode = 4
+        porder = 1
+        npbou = 2
+        nstep = 1
         Rgas = 287.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0001d0 ! TODO: make it adaptive...
+        dt = 0.0001d0
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
         !*********************************************************************!
 
-        write(file_path,*) "./mesh/"
-        write(*,*) "--| ALL MESH FILES MUST BE IN ",trim(adjustl(file_path))," !"
-        write(*,*) "--| ENTER NAME OF MESH RELATED FILES :"
-        read(*,*) file_name
+        write(file_path,*) "./"
+        write(file_name,*) 'shock_tube'
         call read_dims(file_path,file_name,npoin,nelem,nboun)
         allocate(connec(nelem,nnode))
         allocate(bound(nboun,npbou))
@@ -81,13 +77,13 @@ program sod2d
         do ielem = 1,nelem
            call char_length(ielem,nelem,nnode,npoin,ndime,connec,coord,he_aux)
            helem(ielem) = he_aux
+           print*, ielem, helem(ielem)
         end do
 
         !*********************************************************************!
         ! Create mesh graph for CSR matrices                                  !
         !*********************************************************************!
 
-        write(*,*) "--| PERFORMING GRAPH OPERATIONS..."
         allocate(rdom(npoin+1))                                          ! Implicit row indexing
         allocate(aux_cdom(nelem*nnode*nnode))                            ! Preliminary cdom for subroutine
         call compute_nzdom(npoin,nnode,nelem,connec,nzdom,rdom,aux_cdom) ! Computes nzdom, rdom and aux_cdom
@@ -96,13 +92,11 @@ program sod2d
            cdom(izdom) = aux_cdom(izdom)
         end do
         deallocate(aux_cdom)
-        write(*,*) "--| END OF GRAPH OPERATIONS!"
 
         !*********************************************************************!
         ! Generate list of "free" nodes                                       !
         !*********************************************************************!
 
-        write(*,*) "--| SPLITTING BOUNDARY NODES FROM DOFs..."
         allocate(aux1(npoin))
 
         !
@@ -138,8 +132,6 @@ program sod2d
 
         nbnodes = ndof
         ndof = npoin-ndof
-        write(*,*) '--| TOTAL FREE NODES := ',ndof
-        write(*,*) '--| TOTAL BOUNDARY NODES := ',nbnodes
 
         allocate(ldof(ndof))
         allocate(lbnodes(nbnodes))
@@ -163,7 +155,6 @@ program sod2d
         ! Allocate variables                                                  !
         !*********************************************************************!
 
-        WRITE(*,*) "--| ALLOCATING MAIN VARIABLES"
         !
         ! Last rank is for prediction-advance related to entropy viscosity,
         ! where 1 is prediction, 2 is final value
@@ -212,8 +203,6 @@ program sod2d
         !*********************************************************************!
         ! Generate GLL table                                                  !
         !*********************************************************************!
-
-        write(*,*) "--| GENERATING GAUSSIAN QUADRATURE TABLE..."
 
         ! TODO: allow for more element types...
 
@@ -264,8 +253,6 @@ program sod2d
 
         ! TODO: Allow for more element types
 
-        write(*,*) "--| GENERATING SHAPE FUNCTIONS AND ISOPAR. DERIVATIVES..."
-
         allocate(N(nnode),dN(ndime,nnode))
         allocate(Ngp(ngaus,nnode),dNgp(ndime,nnode,ngaus))
 
@@ -291,8 +278,6 @@ program sod2d
         !*********************************************************************!
         ! Generate Jacobian related information                               !
         !*********************************************************************!
-
-        write(*,*) "--| GENERATING JACOBIAN RELATED INFORMATION..."
 
         allocate(elcod(ndime,nnode))
         allocate(Je(ndime,ndime))
@@ -329,67 +314,31 @@ program sod2d
         ! Compute mass matrix (Lumped and Consistent) and set solver type     !
         !*********************************************************************!
 
-        write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
         allocate(Ml(npoin))
         call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         solver_type = 'LUMSO'
 
-        write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
         allocate(Mc(nzdom))
         call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
-        write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
-        write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
-        read(*,*) solver_type
+        write(solver_type,*) 'APINV'
         if (solver_type == 'APINV') then
-                write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
-                read(*,*) ppow
+                ppow = 100
         end if
-        write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
         !*********************************************************************!
-        ! Start of time stepping                                              !
+        ! Test ENVIT related subroutines                                      !
         !*********************************************************************!
 
-        do istep = 1,nstep
+        allocate(Reta(npoin))
+        allocate(Rrho(npoin))
+        rho(:,1) = rho(:,2)
+        pr(:,1) = pr(:,2)
+        u(:,:,1) = u(:,:,2)
+        q(:,:,1) = q(:,:,2)
+        call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
+                       rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+                       dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
+                       rho, u, pr, q, &
+                       Reta, Rrho)
 
-           write(*,*) '   --| STEP: ', istep
-
-           !
-           ! Prediction
-           !
-           flag_predic = 1
-           rho(:,1) = rho(:,2)
-           u(:,:,1) = u(:,:,2)
-           q(:,:,1) = q(:,:,2)
-           pr(:,1) = pr(:,2)
-           E(:,1) = E(:,2)
-           Tem(:,1) = Tem(:,2)
-           e_int(:,1) = e_int(:,2)
-
-           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem, rho,u,q,pr,E,Tem,e_int)
-
-           !
-           ! Advance with entropy viscosity
-           !
-           flag_predic = 0
-           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem, rho,u,q,pr,E,Tem,e_int)
-
-        end do
-
-        !
-        ! File dump
-        !
-        write(dumpfile,'("tstep_",i0,".dat")') 20
-        open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
-        do ipoin = 1,npoin
-           if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
-              write(99+1,"(f8.4, f16.8, f16.8, f16.8)") coord(ipoin,1), rho(ipoin,2), u(ipoin,1,2), pr(ipoin,2)
-           end if
-        end do
-        close(unit=99+1)
-
-end program sod2d
+end program unitt_entropy_viscosity
