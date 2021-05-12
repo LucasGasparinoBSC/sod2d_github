@@ -44,6 +44,8 @@ program sod2d
         character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
 
+        integer(4) :: counter
+
         !*********************************************************************!
         ! Basic data, hardcoded for now                                       !
         !*********************************************************************!
@@ -53,12 +55,12 @@ program sod2d
         nnode = 4 ! TODO: need to allow for mixed elements...
         porder = 1 ! Element order
         npbou = 2 ! TODO: Need to get his from somewhere...
-        nstep = 1 ! TODO: Needs to be input...
+        nstep = 5000 ! TODO: Needs to be input...
         Rgas = 287.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0001d0 ! TODO: make it adaptive...
+        dt = 0.00002d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -346,6 +348,7 @@ program sod2d
         ! Start of time stepping                                              !
         !*********************************************************************!
 
+        counter = 1
         do istep = 1,nstep
 
            write(*,*) '   --| STEP: ', istep
@@ -370,22 +373,30 @@ program sod2d
            ! Advance with entropy viscosity
            !
            flag_predic = 0
-           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem, rho,u,q,pr,E,Tem,e_int)
+           !!$call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
+           !!$          ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+           !!$          helem, rho,u,q,pr,E,Tem,e_int)
 
-        end do
-
-        !
-        ! File dump
-        !
-        write(dumpfile,'("tstep_",i0,".dat")') 20
-        open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
-        do ipoin = 1,npoin
-           if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
-              write(99+1,"(f8.4, f16.8, f16.8, f16.8)") coord(ipoin,1), rho(ipoin,2), u(ipoin,1,2), pr(ipoin,2)
+           print*, maxval(abs(u(:,1,1)))
+           if (isnan(maxval(abs(u(:,1,1))))) then
+              write(*,*) '--| FOUND NaN!'
+              exit
            end if
+
+           !
+           ! File dump
+           !
+           write(dumpfile,'("tstep_",i0,".dat")') counter
+           write(*,*) '--| WRITING FILE ',dumpfile
+           open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
+           do ipoin = 1,npoin
+              if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
+                 write(99+1,"(f8.4, f16.8, f16.8, f16.8)") coord(ipoin,1), rho(ipoin,1), u(ipoin,1,1), pr(ipoin,1)
+              end if
+           end do
+           close(unit=99+1)
+           counter = counter+1
+
         end do
-        close(unit=99+1)
 
 end program sod2d

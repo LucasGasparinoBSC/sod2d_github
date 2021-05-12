@@ -36,7 +36,6 @@ module mod_entropy_viscosity
                           ! Current (substesp values)
                           !
                           eta(ipoin) = (rhok(ipoin)/0.400d0)*log(prk(ipoin)/(rhok(ipoin)**1.40d0))
-                          print*, ipoin, rhok(ipoin)
                           f_eta(ipoin,1:ndime) = uk(ipoin,1:ndime)*eta(ipoin)
                           alpha(ipoin) = eta(ipoin)/rhok(ipoin)
                           f_rho(ipoin,1:ndime) = alpha(ipoin)*qk(ipoin,1:ndime)
@@ -72,14 +71,6 @@ module mod_entropy_viscosity
 
                        Reta = Reta+R1
                        Rrho = Rrho+R2
-
-                       print*, ' '
-                       print*, 'Reta = '
-                       print*, Reta
-                       print*, ' '
-                       print*, 'Rrho = '
-                       print*, Rrho
-                       print*, ' '
 
               end subroutine residuals
 

@@ -14,7 +14,7 @@ program unitt_mom_diffu
         integer(4)                 :: nelem, npoin
         integer(4)                 :: ielem, ipoin
         integer(4), allocatable    :: connec(:,:)
-        real(8),    allocatable    :: coord(:,:), elcod(:,:)
+        real(8),    allocatable    :: coord(:,:), elcod(:,:), mu_e(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
         real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
         real(8),    allocatable    :: Je(:,:), He(:,:)
@@ -35,6 +35,7 @@ program unitt_mom_diffu
 
         allocate(connec(nelem,nnode))
         allocate(coord(npoin,ndime))
+        allocate(mu_e(nelem)) ! Constant diffusion parameter
 
         connec(1,:) = (/1,2,3,4/)
 
@@ -42,6 +43,11 @@ program unitt_mom_diffu
         coord(2,:) = (/2.0d0, 0.0d0/)
         coord(3,:) = (/3.0d0, 2.0d0/)
         coord(4,:) = (/0.0d0, 2.0d0/)
+
+        !
+        ! Set a constant diffusion
+        !
+        mu_e = 1.0d0
 
         !*********************************************************************!
         ! Allocate variables                                                  !
@@ -139,7 +145,7 @@ program unitt_mom_diffu
         !*********************************************************************!
 
         allocate(Rdiffu(npoin,ndime))
-        call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Rdiffu)
+        call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,mu_e,Rdiffu)
 
         do ipoin = 1,npoin
            write(*,*) ipoin, Rdiffu(ipoin,:)

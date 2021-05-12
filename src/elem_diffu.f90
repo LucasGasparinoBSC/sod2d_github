@@ -4,7 +4,7 @@ module elem_diffu
 
       contains
 
-              subroutine mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho,Rmass)
+              subroutine mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho,mu_e,Rmass)
 
                       ! TODO: Add stab. viscosity
 
@@ -15,22 +15,23 @@ module elem_diffu
                       real(8),    intent(in)  :: Ngp(ngaus,nnode)
                       real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
-                      real(8),    intent(in)  :: rho(npoin)
+                      real(8),    intent(in)  :: rho(npoin), mu_e(nelem)
                       real(8),    intent(out) :: Rmass(npoin)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, jnode, idime
-                      real(8)                 :: Re(nnode), el_rho(nnode)
+                      real(8)                 :: Re(nnode), el_rho(nnode), nu_e
 
                       Rmass = 0.0d0
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          el_rho(1:nnode) = rho(ind)
+                         nu_e = mu_e(ielem)/maxval(abs(el_rho))
                          do igaus = 1,ngaus
                             do idime = 1,ndime
                                do inode = 1,nnode
                                   do jnode = 1,nnode
-                                     Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*gpcar(idime,inode,igaus,ielem)* &
+                                     Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*nu_e*gpcar(idime,inode,igaus,ielem)* &
                                              gpcar(idime,jnode,igaus,ielem)*el_rho(jnode)
                                   end do
                                end do
@@ -41,7 +42,7 @@ module elem_diffu
 
               end subroutine mass_diffusion
 
-              subroutine mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Rmom)
+              subroutine mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,mu_e,Rmom)
 
                       ! TODO: Add. stab. viscosity
 
@@ -52,7 +53,7 @@ module elem_diffu
                       real(8),    intent(in)  :: Ngp(ngaus,nnode)
                       real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
-                      real(8),    intent(in)  :: u(npoin,ndime)
+                      real(8),    intent(in)  :: u(npoin,ndime), mu_e(nelem)
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode
@@ -74,7 +75,7 @@ module elem_diffu
                                   end do
                                   do inode = 1,nnode
                                      Re(inode,idime) = Re(inode,idime) + gpvol(1,igaus,ielem) * &
-                                             gpcar(jdime,inode,igaus,ielem)*grad_u(idime,jdime,igaus)
+                                             gpcar(jdime,inode,igaus,ielem)*mu_e(ielem)*grad_u(idime,jdime,igaus)
                                   end do
                                end do
                             end do
@@ -86,7 +87,7 @@ module elem_diffu
 
               end subroutine mom_diffusion
 
-              subroutine ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Tem,Rener)
+              subroutine ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Tem,mu_e,Rener)
 
                       ! TODO: Add stab. viscosity
 
@@ -97,11 +98,11 @@ module elem_diffu
                       real(8),    intent(in)  :: Ngp(ngaus,nnode)
                       real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
-                      real(8),    intent(in)  :: u(npoin,ndime), Tem(npoin)
+                      real(8),    intent(in)  :: u(npoin,ndime), Tem(npoin), mu_e(nelem)
                       real(8),    intent(out) :: Rener(npoin)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, jnode, idime
-                      real(8)                 :: Re(nnode)
+                      real(8)                 :: Re(nnode), kappa_e
                       real(8)                 :: el_u(nnode,ndime), el_Tem(nnode), el_Ke(nnode)
                       real(8)                 :: grad_T(ndime,ngaus), grad_Ke(ndime,ngaus)
 
@@ -111,11 +112,12 @@ module elem_diffu
                          ind = connec(ielem,:)
                          el_u(1:nnode,1:ndime) = u(ind,1:ndime)
                          el_Tem(1:nnode) = Tem(ind)
+                         kappa_e = mu_e(ielem)*1004.0d0/0.72d0 ! Fixed Cp and Pr
                          !
                          ! Ke
                          !
                          do inode = 1,nnode
-                            el_Ke(inode) = dot_product(el_u(inode,:),el_u(inode,:))
+                            el_Ke(inode) = dot_product(el_u(inode,:),el_u(inode,:))/2.0d0
                          end do
                          grad_T = 0.0d0
                          grad_Ke = 0.0d0
@@ -129,8 +131,8 @@ module elem_diffu
                                end do
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem) * &
-                                          (gpcar(idime,inode,igaus,ielem)*grad_T(idime,igaus) + &
-                                          gpcar(idime,inode,igaus,ielem)*grad_Ke(idime,igaus))
+                                          (gpcar(idime,inode,igaus,ielem)*kappa_e*grad_T(idime,igaus) + &
+                                          gpcar(idime,inode,igaus,ielem)*mu_e(ielem)*grad_Ke(idime,igaus))
                                end do
                             end do
                          end do
