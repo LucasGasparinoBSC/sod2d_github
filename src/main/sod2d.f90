@@ -37,6 +37,7 @@ program sod2d
         real(8),    allocatable    :: dxN(:,:), gpcar(:,:,:,:), gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
         real(8),    allocatable    :: Mc(:), Ml(:)
+        real(8),    allocatable    :: mu_e(:)
         real(8)                    :: s, t, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
         real(8)                    :: dt, cfl, he_aux
@@ -55,12 +56,12 @@ program sod2d
         nnode = 4 ! TODO: need to allow for mixed elements...
         porder = 1 ! Element order
         npbou = 2 ! TODO: Need to get his from somewhere...
-        nstep = 5000 ! TODO: Needs to be input...
+        nstep = 500 ! TODO: Needs to be input...
         Rgas = 287.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.00002d0 ! TODO: make it adaptive...
+        dt = 0.0001d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -178,6 +179,7 @@ program sod2d
         allocate(E(npoin,2))        ! Total Energy
         allocate(Tem(npoin,2))      ! Temperature
         allocate(e_int(npoin,2))    ! Internal Energy
+        allocate(mu_e(nelem))
 
         !*********************************************************************!
         ! Read initial conditions                                             !
@@ -199,13 +201,13 @@ program sod2d
            E(ipoin,2) = rho(ipoin,2)*(0.5d0*dot_product(u(ipoin,:,2),u(ipoin,:,2))+e_int(ipoin,2))
            q(ipoin,1:ndime,2) = rho(ipoin,2)*u(ipoin,1:ndime,2)
         end do
+        mu_e = 0.0d0
 
         !
         ! Call VTK output
         !
         call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
-                                           rho(:,2),u(:,:,2),pr(:,2),E(:,2))
-        STOP 0
+                             rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
 
         !*********************************************************************!
         ! Generate GLL table                                                  !
@@ -367,34 +369,22 @@ program sod2d
 
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                      ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem, rho,u,q,pr,E,Tem,e_int)
+                     helem, rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
            ! Advance with entropy viscosity
            !
            flag_predic = 0
-           !!$call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-           !!$          ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-           !!$          helem, rho,u,q,pr,E,Tem,e_int)
-
-           print*, maxval(abs(u(:,1,1)))
-           if (isnan(maxval(abs(u(:,1,1))))) then
-              write(*,*) '--| FOUND NaN!'
-              exit
-           end if
+           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
+                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                     helem, rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
-           ! File dump
+           ! Call VTK output
            !
-           write(dumpfile,'("tstep_",i0,".dat")') counter
-           write(*,*) '--| WRITING FILE ',dumpfile
-           open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
-           do ipoin = 1,npoin
-              if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
-                 write(99+1,"(f8.4, f16.8, f16.8, f16.8)") coord(ipoin,1), rho(ipoin,1), u(ipoin,1,1), pr(ipoin,1)
-              end if
-           end do
-           close(unit=99+1)
+           call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
+                                rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+
            counter = counter+1
 
         end do

@@ -1,7 +1,7 @@
 module mod_output
         contains
                 subroutine write_vtk_ascii(istep,ndime,npoin,nelem,nnode,coord,connec, &
-                                           rho,u,pr,E)
+                                           rho,u,pr,E,mu_e)
                    implicit none
 
                    integer(4), intent(in)                           :: istep, ndime, npoin, nelem, nnode
@@ -9,6 +9,7 @@ module mod_output
                    real(8)   , intent(in)                           :: coord(npoin,ndime)
                    real(8)   , intent(in), dimension(npoin)         :: rho, pr, E
                    real(8)   , intent(in), dimension(npoin,ndime)   :: u
+                   real(8)   , intent(in), dimension(nelem)         :: mu_e
                    integer(4)                                       :: i, ivtk=9
                    integer(4)            , dimension(nelem,nnode+1) :: cells
                    integer(4)            , dimension(nelem)         :: cellTypes
@@ -119,13 +120,13 @@ module mod_output
                    !!
                    !! Write cell scalar data
                    !!
-                   !write(str1(1:8),'(i8)') numCells
-                   !write(ivtk,'(a)') 'CELL_DATA '//trim(str1)
-                   !write(ivtk,'(a)') 'SCALARS '//' ENVIT '//' double'
-                   !write(ivtk,'(a)') 'LOOKUP_TABLE '//' default'
-                   !do i = 1,numCells
-                   !   write(ivtk,*) mu(i)
-                   !end do
+                   write(str1(1:8),'(i8)') nelem
+                   write(ivtk,'(a)') 'CELL_DATA '//trim(str1)
+                   write(ivtk,'(a)') 'SCALARS '//' ENVIT '//' double'
+                   write(ivtk,'(a)') 'LOOKUP_TABLE '//' default'
+                   do i = 1,nelem
+                      write(ivtk,*) mu_e(i)
+                   end do
                    
                    close(ivtk)
 

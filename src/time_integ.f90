@@ -9,7 +9,7 @@ module time_integ
 
               subroutine rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                               ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                              helem, rho,u,q,pr,E,Tem,e_int)
+                              helem, rho,u,q,pr,E,Tem,e_int,mu_e)
 
                       implicit none
 
@@ -29,6 +29,7 @@ module time_integ
                       real(8),    intent(inout)          :: E(npoin,2)
                       real(8),    intent(inout)          :: Tem(npoin,2)
                       real(8),    intent(inout)          :: e_int(npoin,2)
+                      real(8),    intent(out)            :: mu_e(nelem)
                       integer(4)                         :: pos
                       integer(4)                         :: istep, ipoin, idof, idime
                       real(8),    dimension(npoin)       :: rho_1, rho_2, rho_3, rho_4
@@ -43,7 +44,6 @@ module time_integ
                       real(8),    dimension(npoin,ndime) :: Rmom_1, Rmom_2, Rmom_3, Rmom_4
                       real(8),    dimension(npoin)       :: aux_mass, aux_ener, Reta, Rrho
                       real(8),    dimension(npoin,ndime) :: aux_mom
-                      real(8)                            :: mu_e(nelem)
                       real(8)                            :: Rdiff_scal(npoin), Rdiff_vect(npoin,ndime)
 
                       !
