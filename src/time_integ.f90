@@ -79,14 +79,14 @@ module time_integ
                          !
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
-                                   dt, rho(:,1), u(:,:,1), pr(:,1), q(:,:,1), &
+                                   dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
                                    rho, u, pr, q, &
                                    Reta, Rrho)
 
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho,u,pr,helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho(:,2),u(:,:,2),pr(:,2),helem,mu_e)
 
                       end if
 
@@ -167,7 +167,7 @@ module time_integ
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho,u,pr,helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho_1,u_1,pr_1,helem,mu_e)
 
                       end if
 
@@ -238,7 +238,7 @@ module time_integ
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho,u,pr,helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho_2,u_2,pr_2,helem,mu_e)
 
                       end if
 
@@ -309,7 +309,7 @@ module time_integ
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho,u,pr,helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho_3,u_3,pr_3,helem,mu_e)
 
                       end if
 

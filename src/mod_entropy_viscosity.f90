@@ -112,6 +112,7 @@ module mod_entropy_viscosity
                          !
                          betae = 0.5d0*helem(ielem)*maxval(abs(L3))
                          mu_e(ielem) = maxval(abs(rhoe))*min(Ve,betae) ! Dynamic viscosity
+                         !mu_e(ielem) = betae
                       end do
 
               end subroutine smart_visc
