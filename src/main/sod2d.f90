@@ -13,6 +13,7 @@ program sod2d
         use mass_matrix
         use mod_graph
         use mod_geom
+        use mod_output
 
         use time_integ
 
@@ -184,18 +185,6 @@ program sod2d
         call read_densi(npoin,file_path,rho(:,2))
         call read_press(npoin,file_path,pr(:,2)) ! Can be switched for TEMPE
 
-        !
-        ! File dump
-        !
-        write(dumpfile,'("tstep_",i0,".dat")') 0
-        open(unit = 99+1,file = dumpfile,form="formatted",status="replace",action="write")
-        do ipoin = 1,npoin
-           if (coord(ipoin,2) > -0.045d0 .and. coord(ipoin,2) < 0.045d0) then
-              write(99+1,"(f8.4, f16.8, f16.8, f16.8)") coord(ipoin,1), rho(ipoin,2), u(ipoin,1,2), pr(ipoin,2)
-           end if
-        end do
-        close(unit=99+1)
-
         !*********************************************************************!
         ! Generate complementary info                                         !
         !*********************************************************************!
@@ -208,6 +197,13 @@ program sod2d
            E(ipoin,2) = rho(ipoin,2)*(0.5d0*dot_product(u(ipoin,:,2),u(ipoin,:,2))+e_int(ipoin,2))
            q(ipoin,1:ndime,2) = rho(ipoin,2)*u(ipoin,1:ndime,2)
         end do
+
+        !
+        ! Call VTK output
+        !
+        call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
+                                           rho(:,2),u(:,:,2),pr(:,2),E(:,2))
+        STOP 0
 
         !*********************************************************************!
         ! Generate GLL table                                                  !
