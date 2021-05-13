@@ -176,26 +176,32 @@ module elem_convec
 
               end subroutine ener_convec
 
-              subroutine generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q,Rconvec)
+              subroutine generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q,Rconvec,alpha)
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
-                      integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: Ngp(ngaus,nnode)
-                      real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
-                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
-                      real(8),    intent(in)  :: q(npoin,ndime)
-                      real(8),    intent(out) :: Rconvec(npoin)
-                      integer(4)              :: ind(nnode)
-                      integer(4)              :: ielem, igaus, inode, jnode, idime
-                      real(8)                 :: Re(nnode), el_q(nnode,ndime)
+                      integer(4), intent(in)           :: nelem, ngaus, npoin, nnode, ndime
+                      integer(4), intent(in)           :: connec(nelem,nnode)
+                      real(8),    intent(in)           :: Ngp(ngaus,nnode)
+                      real(8),    intent(in)           :: gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)           :: gpvol(1,ngaus,nelem)
+                      real(8),    intent(in)           :: q(npoin,ndime)
+                      real(8),    intent(in), optional :: alpha(npoin)
+                      real(8),    intent(out)          :: Rconvec(npoin)
+                      integer(4)                       :: ind(nnode)
+                      integer(4)                       :: ielem, igaus, inode, jnode, idime
+                      real(8)                          :: Re(nnode), el_q(nnode,ndime), el_a(nnode)
 
                       Rconvec = 0.0d0
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          el_q(1:nnode,1:ndime) = q(ind,1:ndime)
+                         if (present(alpha)) then
+                            el_a(1:nnode) = alpha(ind)
+                         else
+                            el_a(:) = 1.0d0
+                         end if
                          !
                          ! Quadrature
                          !
@@ -204,6 +210,7 @@ module elem_convec
                                do idime = 1,ndime
                                   do jnode = 1,nnode
                                      Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
+                                                 dot_product(Ngp(igaus,:),el_a(:))* &
                                                  (gpcar(idime,jnode,igaus,ielem)*el_q(jnode,idime))
                                   end do
                                end do

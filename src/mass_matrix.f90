@@ -2,7 +2,7 @@ module mass_matrix
 
       contains
 
-              subroutine consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
+              subroutine consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc,weight)
 
                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                       ! Forms Mc as a sparse CSR matrix, utilizing nzdom, rdom and cdom to          !
@@ -12,13 +12,14 @@ module mass_matrix
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, nnode, npoin, ngaus, nzdom
-                      integer(4), intent(in)  :: connec(nelem,nnode), rdom(npoin+1), cdom(nzdom)
-                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode)
-                      real(8),    intent(out) :: Mc(nzdom)
-                      integer(4)              :: ielem, igaus, inode, jnode, lnode(nnode), izdom, ipoin, jpoin
-                      integer(4)              :: jzdom, rowb, rowe
-                      real(8)                 :: Me(nnode,nnode)
+                      integer(4), intent(in)           :: nelem, nnode, npoin, ngaus, nzdom
+                      integer(4), intent(in)           :: connec(nelem,nnode), rdom(npoin+1), cdom(nzdom)
+                      real(8),    intent(in)           :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode)
+                      real(8),    intent(in), optional :: weight(npoin)
+                      real(8),    intent(out)          :: Mc(nzdom)
+                      integer(4)                       :: ielem, igaus, inode, jnode, lnode(nnode), izdom, ipoin, jpoin
+                      integer(4)                       :: jzdom, rowb, rowe
+                      real(8)                          :: Me(nnode,nnode), el_w(nnode)
 
                       !
                       ! Initialize Mc to zeros
@@ -30,6 +31,12 @@ module mass_matrix
                       !
                       do ielem = 1,nelem
                          lnode(1:nnode) = connec(ielem,1:nnode) ! get elemental indices
+                         if(present(weight))then
+                            el_w(1:nnode) = weight(lnode)
+                         else
+                            el_w(:) = 1.0d0
+                         end if
+
                          !
                          ! Form Mc_e with Gaussian quadrature (open)
                          !
@@ -38,7 +45,8 @@ module mass_matrix
                             do inode = 1,nnode ! Loop over element nodes (row)
                                do jnode = 1,nnode ! Loop over element nodex (column)
                                   Me(inode,jnode) = Me(inode,jnode) + &
-                                     gpvol(1,igaus,ielem)*Ngp(igaus,inode)*Ngp(igaus,jnode) ! Gaussian quad.
+                                     gpvol(1,igaus,ielem)*(dot_product(Ngp(igaus,:),el_w(:)))* &
+                                     Ngp(igaus,inode)*Ngp(igaus,jnode) ! Gaussian quad.
                                end do
                             end do
                          end do
@@ -67,20 +75,26 @@ module mass_matrix
 
               end subroutine consistent_mass
 
-              subroutine lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
+              subroutine lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml,weight)
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, nnode, npoin, ngaus
-                      integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode)
-                      real(8),    intent(out) :: Ml(npoin)
-                      integer(4)              :: ielem, igaus, inode, jnode, ind(nnode)
-                      real(8)                 :: Me(nnode), alpha, aux1, aux2
+                      integer(4), intent(in)           :: nelem, nnode, npoin, ngaus
+                      integer(4), intent(in)           :: connec(nelem,nnode)
+                      real(8),    intent(in)           :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode)
+                      real(8),    intent(in), optional :: weight(npoin)
+                      real(8),    intent(out)          :: Ml(npoin)
+                      integer(4)                       :: ielem, igaus, inode, jnode, ind(nnode)
+                      real(8)                          :: Me(nnode), alpha, aux1, aux2, el_w(nnode)
 
                       Ml = 0.0d0
                       do ielem = 1,nelem
                          ind(1:nnode) = connec(ielem,1:nnode)
+                         if (present(weight)) then
+                            el_w(1:nnode) = weight(ind)
+                         else
+                            el_w(:) = 1.0d0
+                         end if
                          Me = 0.0d0
                          alpha = 0.0d0
                          aux1 = 0.0d0
@@ -90,7 +104,8 @@ module mass_matrix
                          !
                          do inode = 1,nnode
                             do igaus = 1,ngaus
-                               aux1 = aux1+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*Ngp(igaus,inode)
+                            aux1 = aux1+gpvol(1,igaus,ielem)*(dot_product(Ngp(igaus,:),el_w(:)))* &
+                                   Ngp(igaus,inode)*Ngp(igaus,inode)
                             end do
                          end do
                          !
