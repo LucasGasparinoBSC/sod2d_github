@@ -369,7 +369,7 @@ program sod2d
 
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                      ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem, rho,u,q,pr,E,Tem,e_int,mu_e)
+                     helem,rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
            ! Advance with entropy viscosity
@@ -377,7 +377,7 @@ program sod2d
            flag_predic = 0
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                      ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem, rho,u,q,pr,E,Tem,e_int,mu_e)
+                     helem,rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
            ! Call VTK output

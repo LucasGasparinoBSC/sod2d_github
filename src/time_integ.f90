@@ -206,6 +206,7 @@ module time_integ
                          e_int_2(ipoin) = (E_2(ipoin)/rho_2(ipoin))-0.5d0*dot_product(u_2(ipoin,:),u_2(ipoin,:))
                       end do
                       pr_2 = rho_2*(1.400d0-1.0d0)*e_int_2
+                      Tem_2 = pr_2/(rho_2*287.0d0)
 
                       !
                       ! Sub Step 3
@@ -277,6 +278,7 @@ module time_integ
                          e_int_3(ipoin) = (E_3(ipoin)/rho_3(ipoin))-0.5d0*dot_product(u_3(ipoin,:),u_3(ipoin,:))
                       end do
                       pr_3 = rho_3*(1.400d0-1.0d0)*e_int_3
+                      Tem_3 = pr_3/(rho_3*287.0d0)
 
                       !
                       ! Sub Step 4
@@ -351,6 +353,7 @@ module time_integ
                          e_int_4(ipoin) = (E_4(ipoin)/rho_4(ipoin))-0.5d0*dot_product(u_4(ipoin,:),u_4(ipoin,:))
                       end do
                       pr_4 = rho_4*(1.400d0-1.0d0)*e_int_4
+                      Tem_4 = pr_4/(rho_4*287.0d0)
 
                       !
                       ! Update
