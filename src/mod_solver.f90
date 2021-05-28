@@ -59,11 +59,6 @@ module mod_solver
                          end do
                       end do
 
-                      !write(*,*) 18.0d0*Ar(1:8)
-                      !write(*,*) 18.0d0*Ar(9:17)
-                      !write(*,*) 18.0d0*Ar(18:25)
-                      !write(*,*) 18.0d0*Ar(26:28)
-
                       !
                       ! Initialize series at k=0
                       !

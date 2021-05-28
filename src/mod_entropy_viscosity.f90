@@ -52,15 +52,9 @@ module mod_entropy_viscosity
                           !alpha_p(ipoin) = eta_p(ipoin)/rho(ipoin,1)
 
                           !
-                          ! Generate weighted mass matrices
-                          !
-                          !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
-                          !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcwp,alpha_p)
-
-                          !
                           ! Temporal term
                           !
-                          R1(ipoin) = (eta_p(ipoin)-eta(ipoin))/dt                              ! Temporal entropy
+                          R1(ipoin) = (eta_p(ipoin)-eta(ipoin))/dt  ! Temporal entropy
                           R2(ipoin) = (rho(ipoin,1)-rhok(ipoin))/dt ! Temporal mass
                        end do
 
@@ -81,8 +75,10 @@ module mod_entropy_viscosity
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho,alpha) ! Mass convec
 
                        Reta = Reta+1.0d0*R1
+                       call lumped_solver_scal(npoin,Ml,Reta)
                        call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
                        Rrho = Rrho+1.0d0*R2
+                       call lumped_solver_scal(npoin,Ml,Rrho)
                        call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rrho)
 
               end subroutine residuals
