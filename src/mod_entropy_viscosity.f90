@@ -33,6 +33,8 @@ module mod_entropy_viscosity
                        !
                        ! Entropy function and temporal terms
                        !
+                       alpha = eta/rhok
+                       call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
                        do ipoin = 1,npoin
 
                           !
@@ -40,19 +42,19 @@ module mod_entropy_viscosity
                           !
                           eta(ipoin) = (rhok(ipoin)/0.400d0)*log(prk(ipoin)/(rhok(ipoin)**1.40d0))
                           f_eta(ipoin,1:ndime) = uk(ipoin,1:ndime)*eta(ipoin)
-                          alpha(ipoin) = eta(ipoin)/rhok(ipoin)
+                          !alpha(ipoin) = eta(ipoin)/rhok(ipoin)
                           f_rho(ipoin,1:ndime) = qk(ipoin,1:ndime)
 
                           !
                           ! Prediction
                           !
                           eta_p(ipoin) = (rho(ipoin,1)/0.400d0)*log(pr(ipoin,1)/(rho(ipoin,1)**1.40d0))
-                          alpha_p(ipoin) = eta_p(ipoin)/rho(ipoin,1)
+                          !alpha_p(ipoin) = eta_p(ipoin)/rho(ipoin,1)
 
                           !
                           ! Generate weighted mass matrices
                           !
-                          call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
+                          !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
                           !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcwp,alpha_p)
 
                           !
@@ -78,9 +80,9 @@ module mod_entropy_viscosity
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_eta,Reta) ! Entropy convec
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho,alpha) ! Mass convec
 
-                       Reta = Reta+R1
+                       Reta = Reta+1.0d0*R1
                        call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
-                       Rrho = Rrho+R2
+                       Rrho = Rrho+1.0d0*R2
                        call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rrho)
 
               end subroutine residuals
