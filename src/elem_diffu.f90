@@ -56,9 +56,9 @@ module elem_diffu
                       real(8),    intent(in)  :: u(npoin,ndime), mu_e(nelem)
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
-                      integer(4)              :: ielem, igaus, idime, jdime, inode, jnode
-                      real(8)                 :: Re(nnode,ndime), aux(ndime,ngaus)
-                      real(8)                 :: el_u(nnode,ndime), grad_u(ndime,ndime,ngaus)
+                      integer(4)              :: ielem, igaus, idime, jdime, inode, jnode, kdime
+                      real(8)                 :: Re(nnode,ndime), aux(ndime,ngaus), tau(ndime,ndime,ngaus)
+                      real(8)                 :: el_u(nnode,ndime), grad_u(ndime,ndime,ngaus), div_u(ndime,ndime,ngaus)
 
                       Rmom = 0.0d0
                       do ielem = 1,nelem
@@ -66,20 +66,51 @@ module elem_diffu
                          ind = connec(ielem,:)
                          el_u(1:nnode,1:ndime) = u(ind,1:ndime)
                          grad_u = 0.0d0
+                         div_u = 0.0d0
                          do igaus = 1,ngaus
                             do idime = 1,ndime
-                               do jdime = 1,ndime
-                                  do jnode = 1,nnode
+                               !
+                               ! grad_u
+                               !
+                               do jnode = 1,nnode
+                                  do jdime = 1,ndime
                                      grad_u(idime,jdime,igaus) = grad_u(idime,jdime,igaus) + &
                                              gpcar(jdime,jnode,igaus,ielem)*el_u(jnode,idime)
                                   end do
-                                  do inode = 1,nnode
-                                     Re(inode,idime) = Re(inode,idime) + gpvol(1,igaus,ielem) * &
-                                             gpcar(jdime,inode,igaus,ielem)*mu_e(ielem)*grad_u(idime,jdime,igaus)
+                               end do
+                               !
+                               ! div_u
+                               !
+                               do jnode = 1,nnode
+                                  do kdime = 1,ndime
+                                     div_u(idime,idime,igaus) = div_u(idime,idime,igaus) + &
+                                             gpcar(kdime,jnode,igaus,ielem)*el_u(jnode,kdime)
+                                  end do
+                               end do
+                               !
+                               ! tau_ij = grad_u + grad_u^T - (2/3)*div_u
+                               !
+                               do jdime = 1,ndime
+                                  tau(idime,jdime,igaus) = 1.0d0*mu_e(ielem)*(grad_u(idime,jdime,igaus) + &
+                                          grad_u(jdime,idime,igaus) - &
+                                          (2.0d0/3.0d0)*div_u(idime,jdime,igaus))
+                               end do
+                            end do
+                            !
+                            ! div(tau)
+                            !
+                            do idime = 1,ndime
+                               do inode = 1,nnode
+                                  do jdime = 1,ndime
+                                     Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem) * &
+                                             gpcar(jdime,inode,igaus,ielem)*tau(idime,jdime,igaus)
                                   end do
                                end do
                             end do
                          end do
+                         !
+                         ! Assembly
+                         !
                          do idime = 1,ndime
                             Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
                          end do
@@ -88,8 +119,6 @@ module elem_diffu
               end subroutine mom_diffusion
 
               subroutine ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Tem,mu_e,Rener)
-
-                      ! TODO: Add stab. viscosity
 
                       implicit none
 
@@ -131,7 +160,7 @@ module elem_diffu
                                end do
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem) * &
-                                          (gpcar(idime,inode,igaus,ielem)*kappa_e*grad_T(idime,igaus) + &
+                                          (gpcar(idime,inode,igaus,ielem)*10.0d0*kappa_e*grad_T(idime,igaus) + &
                                           gpcar(idime,inode,igaus,ielem)*mu_e(ielem)*grad_Ke(idime,igaus))
                                end do
                             end do
