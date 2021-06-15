@@ -56,12 +56,12 @@ program sod2d
         nnode = 4 ! TODO: need to allow for mixed elements...
         porder = 1 ! Element order
         npbou = 2 ! TODO: Need to get his from somewhere...
-        nstep = 5000! TODO: Needs to be input...
+        nstep = 1000! TODO: Needs to be input...
         Rgas = 287.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0002d0 ! TODO: make it adaptive...
+        dt = 0.005d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -369,7 +369,7 @@ program sod2d
 
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                      ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem,rho,u,q,pr,E,Tem,e_int,mu_e)
+                     helem,Rgas,gamma_gas,rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
            ! Advance with entropy viscosity
@@ -377,7 +377,7 @@ program sod2d
            flag_predic = 0
            call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                      ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem,rho,u,q,pr,E,Tem,e_int,mu_e)
+                     helem,Rgas,gamma_gas,rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
            ! Call VTK output

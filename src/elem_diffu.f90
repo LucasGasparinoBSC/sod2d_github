@@ -160,7 +160,7 @@ module elem_diffu
                                end do
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem) * &
-                                          (gpcar(idime,inode,igaus,ielem)*10.0d0*kappa_e*grad_T(idime,igaus) + &
+                                          (gpcar(idime,inode,igaus,ielem)*kappa_e*grad_T(idime,igaus) + &
                                           gpcar(idime,inode,igaus,ielem)*mu_e(ielem)*grad_Ke(idime,igaus))
                                end do
                             end do

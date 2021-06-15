@@ -8,8 +8,8 @@ module time_integ
       contains
 
               subroutine rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                              ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                              helem, rho,u,q,pr,E,Tem,e_int,mu_e)
+                              ppow,nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
+                              helem,Rgas,gamma_gas,rho,u,q,pr,E,Tem,e_int,mu_e)
 
                       implicit none
 
@@ -22,6 +22,7 @@ module time_integ
                       real(8),    intent(in)             :: dt, helem(nelem)
                       real(8),    intent(in)             :: Ml(npoin)
                       real(8),    intent(in)             :: Mc(nzdom)
+                      real(8),    intent(in)             :: Rgas, gamma_gas
                       real(8),    intent(inout)          :: rho(npoin,2)
                       real(8),    intent(inout)          :: u(npoin,ndime,2)
                       real(8),    intent(inout)          :: q(npoin,ndime,2)
@@ -80,13 +81,14 @@ module time_integ
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
-                                   rho, u, pr, q, &
+                                   rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
 
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho(:,2),u(:,:,2),pr(:,2),helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
+                                         gamma_gas,rho(:,2),u(:,:,2),pr(:,2),helem,mu_e)
 
                       end if
 
@@ -133,8 +135,8 @@ module time_integ
                       do ipoin = 1,npoin
                          e_int_1(ipoin) = (E_1(ipoin)/rho_1(ipoin))-0.5d0*dot_product(u_1(ipoin,:),u_1(ipoin,:))
                       end do
-                      pr_1 = rho_1*(1.400d0-1.0d0)*e_int_1
-                      Tem_1 = pr_1/(rho_1*287.0d0)
+                      pr_1 = rho_1*(gamma_gas-1.0d0)*e_int_1
+                      Tem_1 = pr_1/(rho_1*Rgas)
 
                       !
                       ! Sub Step 2
@@ -161,13 +163,14 @@ module time_integ
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho_1, u_1, pr_1, q_1, &
-                                   rho, u, pr, q, &
+                                   rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
 
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho_1,u_1,pr_1,helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
+                                         gamma_gas,rho_1,u_1,pr_1,helem,mu_e)
 
                       end if
 
@@ -205,8 +208,8 @@ module time_integ
                       do ipoin = 1,npoin
                          e_int_2(ipoin) = (E_2(ipoin)/rho_2(ipoin))-0.5d0*dot_product(u_2(ipoin,:),u_2(ipoin,:))
                       end do
-                      pr_2 = rho_2*(1.400d0-1.0d0)*e_int_2
-                      Tem_2 = pr_2/(rho_2*287.0d0)
+                      pr_2 = rho_2*(gamma_gas-1.0d0)*e_int_2
+                      Tem_2 = pr_2/(rho_2*Rgas)
 
                       !
                       ! Sub Step 3
@@ -233,13 +236,14 @@ module time_integ
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho_2, u_2, pr_2, q_2, &
-                                   rho, u, pr, q, &
+                                   rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
 
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho_2,u_2,pr_2,helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
+                                         gamma_gas,rho_2,u_2,pr_2,helem,mu_e)
 
                       end if
 
@@ -277,8 +281,8 @@ module time_integ
                       do ipoin = 1,npoin
                          e_int_3(ipoin) = (E_3(ipoin)/rho_3(ipoin))-0.5d0*dot_product(u_3(ipoin,:),u_3(ipoin,:))
                       end do
-                      pr_3 = rho_3*(1.400d0-1.0d0)*e_int_3
-                      Tem_3 = pr_3/(rho_3*287.0d0)
+                      pr_3 = rho_3*(gamma_gas-1.0d0)*e_int_3
+                      Tem_3 = pr_3/(rho_3*Rgas)
 
                       !
                       ! Sub Step 4
@@ -305,13 +309,14 @@ module time_integ
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho_3, u_3, pr_3, q_3, &
-                                   rho, u, pr, q, &
+                                   rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
 
                          !
                          ! Compute entropy viscosity
                          !
-                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho_3,u_3,pr_3,helem,mu_e)
+                         call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
+                                         gamma_gas,rho_3,u_3,pr_3,helem,mu_e)
 
                       end if
 
@@ -352,8 +357,8 @@ module time_integ
                       do ipoin = 1,npoin
                          e_int_4(ipoin) = (E_4(ipoin)/rho_4(ipoin))-0.5d0*dot_product(u_4(ipoin,:),u_4(ipoin,:))
                       end do
-                      pr_4 = rho_4*(1.400d0-1.0d0)*e_int_4
-                      Tem_4 = pr_4/(rho_4*287.0d0)
+                      pr_4 = rho_4*(gamma_gas-1.0d0)*e_int_4
+                      Tem_4 = pr_4/(rho_4*Rgas)
 
                       !
                       ! Update

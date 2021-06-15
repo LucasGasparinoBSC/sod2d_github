@@ -7,7 +7,7 @@ module mod_entropy_viscosity
               subroutine residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rhok, uk, prk, qk, &
-                                   rho, u, pr, q, &
+                                   rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
 
                       use mass_matrix
@@ -20,7 +20,7 @@ module mod_entropy_viscosity
                       integer(4), intent(in)  :: connec(nelem,nnode), rdom(npoin+1), cdom(nzdom)
                       real(8),    intent(in)  :: Ngp(nnode,ngaus), gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ml(npoin), Mc(nzdom)
-                      real(8),    intent(in)  :: dt
+                      real(8),    intent(in)  :: dt, gamma_gas
                       real(8),    intent(in)  :: rhok(npoin), uk(npoin,ndime), prk(npoin), qk(npoin,ndime)     ! From substep
                       real(8),    intent(in)  :: rho(npoin,2), u(npoin,ndime,2), pr(npoin,2), q(npoin,ndime,2) ! From prediction
                       real(8),    intent(out) :: Reta(npoin), Rrho(npoin)
@@ -40,7 +40,7 @@ module mod_entropy_viscosity
                           !
                           ! Current (substesp values)
                           !
-                          eta(ipoin) = (rhok(ipoin)/0.400d0)*log(prk(ipoin)/(rhok(ipoin)**1.40d0))
+                          eta(ipoin) = (rhok(ipoin)/(gamma_gas-1.0d0))*log(prk(ipoin)/(rhok(ipoin)**gamma_gas))
                           f_eta(ipoin,1:ndime) = uk(ipoin,1:ndime)*eta(ipoin)
                           !alpha(ipoin) = eta(ipoin)/rhok(ipoin)
                           f_rho(ipoin,1:ndime) = qk(ipoin,1:ndime)
@@ -48,7 +48,7 @@ module mod_entropy_viscosity
                           !
                           ! Prediction
                           !
-                          eta_p(ipoin) = (rho(ipoin,1)/0.400d0)*log(pr(ipoin,1)/(rho(ipoin,1)**1.40d0))
+                          eta_p(ipoin) = (rho(ipoin,1)/(gamma_gas-1.0d0))*log(pr(ipoin,1)/(rho(ipoin,1)**gamma_gas))
                           !alpha_p(ipoin) = eta_p(ipoin)/rho(ipoin,1)
 
                           !
@@ -83,14 +83,15 @@ module mod_entropy_viscosity
 
               end subroutine residuals
 
-              subroutine smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho,rho,u,pr,helem,mu_e)
+              subroutine smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
+                                    gamma_gas,rho,u,pr,helem,mu_e)
               
                       ! TODO: Compute element size h
               
                       implicit none
 
                       integer(4), intent(in)  :: nelem, nnode, ndime, npoin, connec(nelem,nnode)
-                      real(8),    intent(in)  :: Reta(npoin), Rrho(npoin), helem(nelem)
+                      real(8),    intent(in)  :: Reta(npoin), Rrho(npoin), helem(nelem), gamma_gas
                       real(8),    intent(in)  :: rho(npoin), u(npoin,ndime), pr(npoin)
                       real(8),    intent(out) :: mu_e(nelem)
                       integer(4)              :: ielem, ind(nnode), inode
@@ -113,7 +114,7 @@ module mod_entropy_viscosity
                          !
                          do inode = 1,nnode
                             uabs = sqrt(dot_product(ue(inode,:),ue(inode,:))) ! Velocity mag. at element node
-                            c_sound = sqrt(1.40d0*pre(inode)/rhoe(inode))     ! Speed of sound at node
+                            c_sound = sqrt(gamma_gas*pre(inode)/rhoe(inode))     ! Speed of sound at node
                             L3(inode) = uabs+c_sound                          ! L3 wavespeed
                          end do
                          !
