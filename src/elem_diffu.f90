@@ -142,6 +142,7 @@ module elem_diffu
                          el_u(1:nnode,1:ndime) = u(ind,1:ndime)
                          el_Tem(1:nnode) = Tem(ind)
                          kappa_e = mu_e(ielem)*1004.0d0/0.72d0 ! Fixed Cp and Pr
+                         !kappa_e = mu_e(ielem)/(1.40d0-1.0d0)
                          !
                          ! Ke
                          !

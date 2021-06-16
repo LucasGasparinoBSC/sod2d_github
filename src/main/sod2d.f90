@@ -5,6 +5,8 @@ program sod2d
         ! Stabilized through Entropy viscosity method.                        !
         !*********************************************************************!
 
+        use cudafor
+
         use elem_qua
         use jacobian_oper
         use quadrature_rules
@@ -56,12 +58,13 @@ program sod2d
         nnode = 4 ! TODO: need to allow for mixed elements...
         porder = 1 ! Element order
         npbou = 2 ! TODO: Need to get his from somewhere...
-        nstep = 1000! TODO: Needs to be input...
+        nstep = 400 ! TODO: Needs to be input...
         Rgas = 287.00d0
+        !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.005d0 ! TODO: make it adaptive...
+        dt = 0.0025d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
