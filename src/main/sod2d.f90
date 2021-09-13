@@ -6,6 +6,7 @@ program sod2d
         !*********************************************************************!
 
         use cudafor
+        use mod_gpu_vars
 
         use elem_qua
         use jacobian_oper
@@ -54,7 +55,8 @@ program sod2d
         !*********************************************************************!
 
         write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
-        read(*,*) ndime
+        !read(*,*) ndime
+        ndime = 2 ! NVVP
         nnode = 4 ! TODO: need to allow for mixed elements...
         porder = 1 ! Element order
         npbou = 2 ! TODO: Need to get his from somewhere...
@@ -73,7 +75,8 @@ program sod2d
         write(file_path,*) "./mesh/"
         write(*,*) "--| ALL MESH FILES MUST BE IN ",trim(adjustl(file_path))," !"
         write(*,*) "--| ENTER NAME OF MESH RELATED FILES :"
-        read(*,*) file_name
+        !read(*,*) file_name
+        write(file_name,*) "shock_tube" ! NVVP
         call read_dims(file_path,file_name,npoin,nelem,nboun)
         allocate(connec(nelem,nnode))
         allocate(bound(nboun,npbou))
@@ -182,7 +185,7 @@ program sod2d
         allocate(E(npoin,2))        ! Total Energy
         allocate(Tem(npoin,2))      ! Temperature
         allocate(e_int(npoin,2))    ! Internal Energy
-        allocate(mu_e(nelem))
+        allocate(mu_e(nelem))       ! Elemental viscosity
 
         !*********************************************************************!
         ! Read initial conditions                                             !
@@ -342,12 +345,63 @@ program sod2d
         call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
-        read(*,*) solver_type
+        !read(*,*) solver_type
+        write(solver_type,'(a)') "APINV" ! NVVP
         if (solver_type == 'APINV') then
                 write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
-                read(*,*) ppow
+                !read(*,*) ppow
+                ppow = 4 ! NVVP
         end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
+
+        !*********************************************************************!
+        ! Create variables on GPU                                             !
+        !*********************************************************************!
+
+        ! Mesh info
+
+        allocate(connec_d(nelem,nnode))
+        allocate(lbnodes_d(nbnodes))
+
+        connec_d = connec
+        lbnodes_d = lbnodes
+
+        ! Primary vars.
+
+        allocate(rho_d(npoin,2))      ! Density
+        allocate(u_d(npoin,ndime,2))  ! Velocity
+        allocate(q_d(npoin,ndime,2))  ! momentum
+        allocate(pr_d(npoin,2))       ! Pressure
+        allocate(E_d(npoin,2))        ! Total Energy
+        allocate(Tem_d(npoin,2))      ! Temperature
+        allocate(e_int_d(npoin,2))    ! Internal Energy
+        allocate(mu_e_d(nelem))       ! Elemental viscosity
+
+        rho_d = rho
+        u_d = u
+        q_d = q
+        pr_d = pr
+        E_d = E
+        Tem_d = Tem
+        e_int_d = e_int
+
+        ! Mass matrices
+
+        allocate(Ml_d(npoin))
+        allocate(Mc_d(nzdom))
+
+        Ml_d = Ml
+        Mc_d = Mc
+
+        ! Elemental info
+
+        allocate(Ngp_d(ngaus,npoin))
+        allocate(gpvol_d(1,ngaus,nelem))
+        allocate(gpcar_d(ndime,nnode,ngaus,nelem))
+
+        Ngp_d = Ngp
+        gpvol_d = gpvol
+        gpcar_d = gpcar_d
 
         !*********************************************************************!
         ! Start of time stepping                                              !
