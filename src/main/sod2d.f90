@@ -43,7 +43,7 @@ program sod2d
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
         real(8),    allocatable    :: Mc(:), Ml(:)
         real(8),    allocatable    :: mu_e(:)
-        real(8)                    :: s, t, detJe
+        real(8)                    :: s, t, z, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
         real(8)                    :: dt, cfl, he_aux
         character(500)             :: file_path
@@ -227,23 +227,43 @@ program sod2d
 
         if (ndime == 2) then ! 2D elements
            if (nnode == 3) then ! TRI03
-                   ngaus = 3
-                   write(*,*) 'NOT CODED YET!'
-                   STOP 1
+               ngaus = 3
+               write(*,*) 'NOT CODED YET!'
+               STOP 1
            else if (nnode == 6) then ! TRI06
-                   ngaus = 7
-                   write(*,*) 'NOT CODED YET!'
-                   STOP 1
+               ngaus = 7
+               write(*,*) 'NOT CODED YET!'
+               STOP 1
            else if (nnode == 4) then ! QUA04
-                   ngaus = 4
+               ngaus = 4
            else if (nnode == 9) then ! QUA09
-                   ngaus = 9
+               ngaus = 9
            end if
         else if (ndime == 3) then ! 3D elements
-                write (*,*) 'NOT CODED YET!'
-                STOP 1
+           if (nnode == 4) then ! TET04
+              ngaus = 4
+              write(*,*) 'NOT CODED YET!'
+              stop 1
+           else if (nnode == 8) then ! HEX08
+              nagaus = 8
+           else if (nnode == 27) then ! HEX27
+              ngaus = 27
+           else if (nnode == 64) then ! HEX64
+              ngaus = 64
+           else
+              write(*,*) 'ELEMENT DOES NOT EXIST, OR IS NOT CODED YET!!'
+              stop 1
+           end if
+        else
+           write(*,*) 'ONLY 2D AND 3D ELEMMENTS SUPPORTED!'
+           stop 1
         end if
-        !ngaus = 1 ! Test value
+
+        ! Option to run with 1 Gauss point per element, for testing and debugging. Will override the previous section.
+
+#ifdef TGAUS
+        ngaus = 1 ! Test value
+#endif
 
         allocate(xgp(ngaus,ndime))
         allocate(wgp(ngaus))
@@ -257,9 +277,7 @@ program sod2d
            end if
         else if (ndime == 3) then
            if (nnode == (porder+1)**3) then ! HEX_XX
-              !call gll_hex(ndime,ngaus,xgp,wgp)
-              write(*,*) '--| NOT CODED YET!'
-              STOP 1
+              call gll_hex(ndime,ngaus,xgp,wgp)
            else if (nnode == 4 .or. nnode == 10 .or. nnode == 20) then ! TET_XX
               write(*,*) '--| NOT CODED YET!'
               STOP 1
@@ -289,8 +307,14 @@ program sod2d
                  STOP 1
               end if
            else if (ndime == 3) then
-              write(*,*) '--| 3D ELEMENTS NOT YET CODED!'
-              STOP 1
+              z = xgp(igaus,3)
+              if (nnode == 8) then
+                 call hex08(s,t,z,N,dN)
+              else if (nnode == 27) then
+                 call hex27(s,t,z,N,dN)
+              else if (nnode == 64) then
+                 call hex64(s,t,z,N,dN)
+              else
            end if
            Ngp(igaus,:) = N
            dNgp(:,:,igaus) = dN
