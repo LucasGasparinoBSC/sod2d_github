@@ -11,6 +11,7 @@ program sod2d
 #endif
 
         use elem_qua
+        use elem_hex
         use jacobian_oper
         use quadrature_rules
         use mesh_reader
@@ -26,13 +27,13 @@ program sod2d
 
         integer(4)                 :: ndime, nnode, ngaus, nstep, nzdom
         integer(4)                 :: idime, inode, igaus, istep, izdom
-        integer(4)                 :: nelem, npoin, nboun, npbou
+        integer(4)                 :: nelem, npoin, nboun, npbou, nbcodes
         integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
         integer(4)                 :: ppow, porder
         integer(4)                 :: flag_predic
         integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
-        integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:)
+        integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
         integer(4), allocatable    :: aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
@@ -58,10 +59,10 @@ program sod2d
 
         write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
         !read(*,*) ndime
-        ndime = 2 ! NVVP
-        nnode = 4 ! TODO: need to allow for mixed elements...
+        ndime = 3!2 ! NVVP
+        nnode = 8!4 ! TODO: need to allow for mixed elements...
         porder = 1 ! Element order
-        npbou = 2 ! TODO: Need to get his from somewhere...
+        npbou = 4!2 ! TODO: Need to get his from somewhere...
         nstep = 400 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
@@ -82,8 +83,10 @@ program sod2d
         call read_dims(file_path,file_name,npoin,nelem,nboun)
         allocate(connec(nelem,nnode))
         allocate(bound(nboun,npbou))
+        allocate(bou_codes(nboun,2))
         allocate(coord(npoin,ndime))
         call read_geo_dat(file_path,file_name,npoin,nelem,nboun,nnode,ndime,npbou,connec,bound,coord)
+        call read_fixbou(file_path,file_name,nboun,nbcodes,bou_codes)
 
         !*********************************************************************!
         ! Compute characteristic size of elements                             !
@@ -245,7 +248,7 @@ program sod2d
               write(*,*) 'NOT CODED YET!'
               stop 1
            else if (nnode == 8) then ! HEX08
-              nagaus = 8
+              ngaus = 8
            else if (nnode == 27) then ! HEX27
               ngaus = 27
            else if (nnode == 64) then ! HEX64
@@ -311,10 +314,11 @@ program sod2d
               if (nnode == 8) then
                  call hex08(s,t,z,N,dN)
               else if (nnode == 27) then
-                 call hex27(s,t,z,N,dN)
+                 !call hex27(s,t,z,N,dN)
               else if (nnode == 64) then
-                 call hex64(s,t,z,N,dN)
+                 !call hex64(s,t,z,N,dN)
               else
+              end if
            end if
            Ngp(igaus,:) = N
            dNgp(:,:,igaus) = dN
@@ -454,17 +458,19 @@ program sod2d
            Tem(:,1) = Tem(:,2)
            e_int(:,1) = e_int(:,2)
 
-           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem,Rgas,gamma_gas,rho,u,q,pr,E,Tem,e_int,mu_e)
+           call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
+                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
+                     Ngp,gpcar,Ml,Mc,gpvol,dt,helem,Rgas,gamma_gas, &
+                     rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
            ! Advance with entropy viscosity
            !
            flag_predic = 0
-           call rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                     helem,Rgas,gamma_gas,rho,u,q,pr,E,Tem,e_int,mu_e)
+           call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
+                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
+                     Ngp,gpcar,Ml,Mc,gpvol,dt,helem,Rgas,gamma_gas, &
+                     rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
            ! Call VTK output

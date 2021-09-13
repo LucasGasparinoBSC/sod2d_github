@@ -1,6 +1,7 @@
 module mod_geom
 
       use elem_qua
+      use elem_hex
 
       contains
 
@@ -21,7 +22,7 @@ module mod_geom
                     if (nnode == 3 .or. nnode == 6) then ! TRI_XX
                        write(*,*) "ELEMENT TRI_XX NOT CODED!"
                     else if (nnode == 4 .or. nnode == 9) then ! QUA_XX
-                       call quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:nnode,1:ndime))
+                       call quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:4,1:ndime))
                     else
                        write(*,*) "INCORRECT ELEMENT TYPE (NODES ERROR)!"
                     end if
@@ -29,7 +30,7 @@ module mod_geom
                     if (nnode == 4 .or. nnode == 10) then ! TET_XX
                        write(*,*) "ELEMENT TET_XX NOT CODED!"
                     else if (nnode == 8 .or. nnode == 27 .or. nnode == 64) then ! HEX_XX
-                       call hexa_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:nnode,1:ndime))
+                       call hexa_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:12,1:ndime))
                     else
                        write(*,*) "INCORRECT ELEMENT TYPE (NODES ERROR)!"
                     end if

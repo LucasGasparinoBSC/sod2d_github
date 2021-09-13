@@ -43,6 +43,10 @@ module mod_output
                       if (nnode .eq. 4) then ! QUA04
                          cellTypes = 9
                       end if
+                   else if (ndime .eq. 3) then
+                      if (nnode .eq. 8) then ! HEX08
+                         cellTypes = 12
+                      end if
                    end if
 
                    !

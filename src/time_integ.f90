@@ -7,15 +7,17 @@ module time_integ
 
       contains
 
-              subroutine rk_4_main(flag_predic,nelem,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                              ppow,nzdom,rdom,cdom,ldof,lbnodes,connec,Ngp,gpcar,Ml,Mc,gpvol,dt, &
-                              helem,Rgas,gamma_gas,rho,u,q,pr,E,Tem,e_int,mu_e)
+              subroutine rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
+                              ppow,nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
+                              Ngp,gpcar,Ml,Mc,gpvol,dt,helem,Rgas,gamma_gas, &
+                              rho,u,q,pr,E,Tem,e_int,mu_e)
 
                       implicit none
 
                       integer(4), intent(in)             :: flag_predic
-                      integer(4), intent(in)             :: nelem, npoin, ndime, ngaus, nnode, ndof, nbnodes
+                      integer(4), intent(in)             :: nelem, nboun, npbou, npoin, ndime, ngaus, nnode, ndof, nbnodes
                       integer(4), intent(in)             :: ldof(ndof), lbnodes(nbnodes), connec(nelem,nnode)
+                      integer(4), intent(in)             :: bound(nboun,npbou), bou_codes(nboun,2)
                       integer(4), intent(in)             :: nzdom, rdom(npoin+1), cdom(nzdom), ppow
                       real(8),    intent(in)             :: Ngp(ngaus,nnode), gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)             :: gpvol(1,ngaus,nelem)
@@ -31,8 +33,8 @@ module time_integ
                       real(8),    intent(inout)          :: Tem(npoin,2)
                       real(8),    intent(inout)          :: e_int(npoin,2)
                       real(8),    intent(out)            :: mu_e(nelem)
-                      integer(4)                         :: pos
-                      integer(4)                         :: istep, ipoin, idof, idime
+                      integer(4)                         :: pos, bcode
+                      integer(4)                         :: istep, ipoin, idof, idime, iboun
                       real(8),    dimension(npoin)       :: rho_1, rho_2, rho_3, rho_4
                       real(8),    dimension(npoin,ndime) :: u_1, u_2, u_3, u_4
                       real(8),    dimension(npoin,ndime) :: q_1, q_2, q_3, q_4
@@ -115,7 +117,28 @@ module time_integ
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
                       call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
                       q_1(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_1(:,:)
-                      q_1(lbnodes,2) = 0.0d0
+
+                      !
+                      ! Janky boundary conditions. TODO: Fix this shite...
+                      !
+                      if (ndime == 2) then
+                         q_1(lbnodes,2) = 0.0d0
+                      else if (ndime == 3) then
+                         !
+                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                         ! Nodes belonging to both codes will be zeroed on both directions.
+                         ! Like this, there's no need to fnd intersections.
+                         !
+                         do iboun = 1,nboun
+                            bcode = bou_codes(iboun,2) ! Boundary element code
+                            if (bcode == 1) then
+                               q_1(bound(iboun,:),2) = 0.0d0
+                            else if (bcode == 2) then
+                               q_1(bound(iboun,:),3) = 0.0d0
+                            end if
+                         end do
+                      end if
+
                       do ipoin = 1,npoin
                          u_1(ipoin,:) = q_1(ipoin,:)/rho_1(ipoin)
                       end do
@@ -191,7 +214,28 @@ module time_integ
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_2)
                       call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_2)
                       q_2(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_2(:,:)
-                      q_2(lbnodes,2) = 0.0d0
+
+                      !
+                      ! Janky boundary conditions. TODO: Fix this shite...
+                      !
+                      if (ndime == 2) then
+                         q_2(lbnodes,2) = 0.0d0
+                      else if (ndime == 3) then
+                         !
+                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                         ! Nodes belonging to both codes will be zeroed on both directions.
+                         ! Like this, there's no need to fnd intersections.
+                         !
+                         do iboun = 1,nboun
+                            bcode = bou_codes(iboun,2) ! Boundary element code
+                            if (bcode == 1) then
+                               q_2(bound(iboun,:),2) = 0.0d0
+                            else if (bcode == 2) then
+                               q_2(bound(iboun,:),3) = 0.0d0
+                            end if
+                         end do
+                      end if
+
                       do ipoin = 1,npoin
                          u_2(ipoin,:) = q_2(ipoin,:)/rho_2(ipoin)
                       end do
@@ -264,7 +308,28 @@ module time_integ
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_3)
                       call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_3)
                       q_3(:,:) = q(:,:,pos)-(dt/1.0d0)*Rmom_3(:,:)
-                      q_3(lbnodes,2) = 0.0d0
+
+                      !
+                      ! Janky boundary conditions. TODO: Fix this shite...
+                      !
+                      if (ndime == 2) then
+                         q_3(lbnodes,2) = 0.0d0
+                      else if (ndime == 3) then
+                         !
+                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                         ! Nodes belonging to both codes will be zeroed on both directions.
+                         ! Like this, there's no need to fnd intersections.
+                         !
+                         do iboun = 1,nboun
+                            bcode = bou_codes(iboun,2) ! Boundary element code
+                            if (bcode == 1) then
+                               q_3(bound(iboun,:),2) = 0.0d0
+                            else if (bcode == 2) then
+                               q_3(bound(iboun,:),3) = 0.0d0
+                            end if
+                         end do
+                      end if
+
                       do ipoin = 1,npoin
                          u_3(ipoin,:) = q_3(ipoin,:)/rho_3(ipoin)
                       end do
@@ -339,7 +404,27 @@ module time_integ
                       call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_4)
                       aux_mom = Rmom_1+2.0d0*Rmom_2+2.0d0*Rmom_3+Rmom_4
                       q_4(:,:) = q(:,:,pos)-(dt/6.0d0)*aux_mom(:,:)
-                      q_4(lbnodes,2) = 0.0d0
+
+                      !
+                      ! Janky boundary conditions. TODO: Fix this shite...
+                      !
+                      if (ndime == 2) then
+                         q_4(lbnodes,2) = 0.0d0
+                      else if (ndime == 3) then
+                         !
+                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                         ! Nodes belonging to both codes will be zeroed on both directions.
+                         ! Like this, there's no need to fnd intersections.
+                         !
+                         do iboun = 1,nboun
+                            bcode = bou_codes(iboun,2) ! Boundary element code
+                            if (bcode == 1) then
+                               q_4(bound(iboun,:),2) = 0.0d0
+                            else if (bcode == 2) then
+                               q_4(bound(iboun,:),3) = 0.0d0
+                            end if
+                         end do
+                      end if
                       do ipoin = 1,npoin
                          u_4(ipoin,:) = q_4(ipoin,:)/rho_4(ipoin)
                       end do
