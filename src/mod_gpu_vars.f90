@@ -2,6 +2,8 @@ module mod_gpu_vars
 
    implicit none
 
+#ifdef GPU
+
    ! Mesh information
 
    integer(4), device, allocatable :: connec_d(:,:)
@@ -29,5 +31,6 @@ module mod_gpu_vars
    real(8), device, allocatable    :: gpcar_d(:,:,:,:)
    real(8), device, allocatable    :: Ngp_d(:,:)
 
+#endif
 
 end module mod_gpu_vars

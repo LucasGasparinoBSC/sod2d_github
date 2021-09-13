@@ -5,8 +5,10 @@ program sod2d
         ! Stabilized through Entropy viscosity method.                        !
         !*********************************************************************!
 
+#ifdef GPU
         use cudafor
         use mod_gpu_vars
+#endif
 
         use elem_qua
         use jacobian_oper
@@ -358,6 +360,8 @@ program sod2d
         ! Create variables on GPU                                             !
         !*********************************************************************!
 
+#ifdef GPU
+
         ! Mesh info
 
         allocate(connec_d(nelem,nnode))
@@ -402,6 +406,8 @@ program sod2d
         Ngp_d = Ngp
         gpvol_d = gpvol
         gpcar_d = gpcar_d
+
+#endif
 
         !*********************************************************************!
         ! Start of time stepping                                              !
