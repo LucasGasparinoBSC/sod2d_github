@@ -18,17 +18,23 @@ module mod_geom
                  ! Compute r = x2-x1 for all element edges
                  !
                  if (ndime == 2) then
-                         if (nnode == 3 .or. nnode == 6) then ! TRI_XX
-                                 write(*,*) "ELEMENT TRI_XX NOT CODED!"
-                         else if (nnode == 4 .or. nnode == 9) then ! QUA_XX
-                                 call quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:nnode,1:ndime))
-                         else
-                                 write(*,*) "INCORRECT ELEMENT TYPE (NODES ERROR)!"
-                         end if
+                    if (nnode == 3 .or. nnode == 6) then ! TRI_XX
+                       write(*,*) "ELEMENT TRI_XX NOT CODED!"
+                    else if (nnode == 4 .or. nnode == 9) then ! QUA_XX
+                       call quad_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:nnode,1:ndime))
+                    else
+                       write(*,*) "INCORRECT ELEMENT TYPE (NODES ERROR)!"
+                    end if
                  else if (ndime == 3) then
-                         write(*,*) "NOT CODED YET!"
+                    if (nnode == 4 .or. nnode == 10) then ! TET_XX
+                       write(*,*) "ELEMENT TET_XX NOT CODED!"
+                    else if (nnode == 8 .or. nnode == 27 .or. nnode == 64) then ! HEX_XX
+                       call hexa_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist(1:nnode,1:ndime))
+                    else
+                       write(*,*) "INCORRECT ELEMENT TYPE (NODES ERROR)!"
+                    end if
                  else
-                         write(*,*) "BY SIGMAR NO!"
+                    write(*,*) "BY SIGMAR NO!"
                  end if
 
                  !

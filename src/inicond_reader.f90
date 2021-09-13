@@ -17,7 +17,11 @@ module inicond_reader
                       write(*,*) "--| READING FILE VELOC.alya..."
                       open(99,file=trim(adjustl(file_path))//trim(adjustl(file_name))//trim(adjustl(file_type)),status="old")
                       do ipoin = 1,npoin
-                         read(99,*) ind, u(ipoin,1), u(ipoin,2)
+                        if (ndime == 2) then
+                           read(99,*) ind, u(ipoin,1), u(ipoin,2)
+                        else if (ndime == 3) then
+                           read(99,*) ind, u(ipoin,1), u(ipoin,2), u(ipoin,3)
+                        end if
                       end do
                       close(99)
 

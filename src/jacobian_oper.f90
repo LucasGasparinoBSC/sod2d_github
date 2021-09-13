@@ -90,8 +90,14 @@ module jacobian_oper
                         real(8)   , intent(in)  :: dN(ndime,nnode), He(ndime,ndime)
                         real(8)   , intent(out) :: dxN(ndime,nnode)
 
-                        dxN(1,:) = He(1,1)*dN(1,:)+He(1,2)*dN(2,:)
-                        dxN(2,:) = He(2,1)*dN(1,:)+He(2,2)*dN(2,:)
+                        if (ndime ==2) then
+                           dxN(1,:) = He(1,1)*dN(1,:)+He(1,2)*dN(2,:)
+                           dxN(2,:) = He(2,1)*dN(1,:)+He(2,2)*dN(2,:)
+                        else if (ndime == 3) then
+                           dxN(1,:) = He(1,1)*dN(1,:)+He(1,2)*dN(2,:)+He(1,3)*dN(3,:)
+                           dxN(2,:) = He(2,1)*dN(1,:)+He(2,2)*dN(2,:)+He(2,3)*dN(3,:)
+                           dxN(3,:) = He(3,1)*dN(1,:)+He(3,2)*dN(2,:)+He(3,3)*dN(3,:)
+                        end if
 
                 end subroutine cartesian_deriv
 

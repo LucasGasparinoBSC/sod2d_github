@@ -29,16 +29,16 @@ module elem_hex
                         dN(2,4) =  1.0d0-s
                         dN = 0.25d0*dN
 
-                end subroutine hex04
+                end subroutine hex08
 
-                subroutine hex09(s,t,N,dN) ! QUA09 element
+                subroutine hex27(s,t,z,N,dN) ! QUA09 element
 
                         ! TODO: IMPLEMENT PROPERLY!!!!!
 
                         implicit none
 
-                        real(8), intent(in)  :: s, t
-                        real(8), intent(out) :: N(9), dN(2,9)
+                        real(8), intent(in)  :: s, t, z
+                        real(8), intent(out) :: N(27), dN(3,27)
 
                         N(1) = (1.0d0-s)*(1.0d0-t)
                         N(2) = (1.0d0+s)*(1.0d0-t)
@@ -56,9 +56,9 @@ module elem_hex
                         dN(2,4) =  1.0d0-s
                         dN = 0.25d0*dN
 
-                end subroutine hex09
+                end subroutine hex27
 
-                subroutine hexd_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist)
+                subroutine hexa_edges(ielem,nelem,nnode,npoin,ndime,connec,coord,ncorner,nedge,dist)
 
                         implicit none
 
@@ -66,20 +66,30 @@ module elem_hex
                         integer(4), intent(in)            :: connec(nelem,nnode)
                         real(8),    intent(in)            :: coord(npoin,ndime)
                         integer(4), intent(out)           :: ncorner, nedge
-                        real(8),    intent(out)           :: dist(4,ndime)
+                        real(8),    intent(out)           :: dist(12,ndime)
                         integer(4)                        :: ind(nnode)
-                        real(8)                           :: xp(4,ndime)
+                        real(8)                           :: xp(12,ndime)
 
                         ind = connec(ielem,:)
-                        ncorner = 4
-                        nedge = 4
+                        ncorner = 8
+                        nedge = 12
 
-                        xp(1:4,1:ndime) = coord(ind(1:4),1:ndime) ! Corner coordinates
+                        xp(1:8,1:ndime) = coord(ind(1:8),1:ndime) ! Corner coordinates
                         dist(1,:) = xp(2,:)-xp(1,:)
                         dist(2,:) = xp(3,:)-xp(2,:)
                         dist(3,:) = xp(4,:)-xp(3,:)
                         dist(4,:) = xp(1,:)-xp(4,:)
 
-                end subroutine hexd_edges
+                        dist(5,:) = xp(6,:)-xp(5,:)
+                        dist(6,:) = xp(7,:)-xp(6,:)
+                        dist(7,:) = xp(8,:)-xp(7,:)
+                        dist(8,:) = xp(5,:)-xp(8,:)
+
+                        dist(9,:) = xp(5,:)-xp(1,:)
+                        dist(10,:) = xp(6,:)-xp(2,:)
+                        dist(11,:) = xp(7,:)-xp(3,:)
+                        dist(12,:) = xp(8,:)-xp(4,:)
+
+                end subroutine hexa_edges
 
 end module
