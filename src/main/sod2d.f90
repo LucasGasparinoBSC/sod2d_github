@@ -10,6 +10,7 @@ program sod2d
         use mod_gpu_vars
 #endif
 
+        use omp_lib
         use elem_qua
         use elem_hex
         use jacobian_oper
