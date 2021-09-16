@@ -46,6 +46,8 @@ module mod_output
                    else if (ndime .eq. 3) then
                       if (nnode .eq. 8) then ! HEX08
                          cellTypes = 12
+                      else if (nnode .eq. 27) then ! HEX27
+                         cellTypes = 29
                       end if
                    end if
 
