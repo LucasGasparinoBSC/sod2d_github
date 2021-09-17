@@ -70,7 +70,7 @@ program sod2d
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0025d0 ! TODO: make it adaptive...
+        dt = 0.00025d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -252,6 +252,7 @@ program sod2d
               ngaus = 8
            else if (nnode == 27) then ! HEX27
               ngaus = 27
+              write(*,*) '--| USING 27 GAUSS NODES PER ELEMENT!'
            else if (nnode == 64) then ! HEX64
               ngaus = 64
            else
