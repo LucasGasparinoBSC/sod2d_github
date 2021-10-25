@@ -1,5 +1,7 @@
 module elem_diffu
 
+      use mod_nvtx
+
       ! TODO: Create unit tests for all subroutines
 
       contains
@@ -22,6 +24,7 @@ module elem_diffu
                       real(8)                 :: Re(nnode), el_rho(nnode), nu_e
 
                       Rmass = 0.0d0
+                      call nvtxStartRange("Mass diffusion")
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -39,6 +42,7 @@ module elem_diffu
                          end do
                          Rmass(ind) = Rmass(ind)+Re(1:nnode)
                       end do
+                      call nvtxEndRange
 
               end subroutine mass_diffusion
 
@@ -61,6 +65,7 @@ module elem_diffu
                       real(8)                 :: el_u(nnode,ndime), grad_u(ndime,ndime,ngaus), div_u(ndime,ndime,ngaus)
 
                       Rmom = 0.0d0
+                      call nvtxStartRange("Momentum diffusion")
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -115,6 +120,7 @@ module elem_diffu
                             Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
                          end do
                       end do
+                      call nvtxEndRange
 
               end subroutine mom_diffusion
 
@@ -136,6 +142,7 @@ module elem_diffu
                       real(8)                 :: grad_T(ndime,ngaus), grad_Ke(ndime,ngaus)
 
                       Rener = 0.0d0
+                      call nvtxStartRange("Energy diffusion")
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -168,6 +175,7 @@ module elem_diffu
                          end do
                          Rener(ind) = Rener(ind)+Re(1:nnode)
                       end do
+                      call nvtxEndRange
 
               end subroutine ener_diffusion
 

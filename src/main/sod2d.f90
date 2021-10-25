@@ -5,8 +5,8 @@ program sod2d
         ! Stabilized through Entropy viscosity method.                        !
         !*********************************************************************!
 
-#ifdef GPU
         use mod_nvtx
+#ifdef GPU
         use cudafor
         use mod_gpu_vars
 #endif
@@ -52,9 +52,9 @@ program sod2d
         character(500)             :: file_path
         character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
+        character(4)               :: timeStep
 
         integer(4) :: counter
-        character(len=4) :: itcount
 
         !*********************************************************************!
         ! Basic data, hardcoded for now                                       !
@@ -62,11 +62,11 @@ program sod2d
 
         write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
         !read(*,*) ndime
-        ndime = 2 ! NVVP
-        nnode = 4 ! TODO: need to allow for mixed elements...
-        porder = 2 ! Element order
-        npbou = 2 ! TODO: Need to get his from somewhere...
-        nstep = 1 ! TODO: Needs to be input...
+        ndime = 3 ! NVVP
+        nnode = 8 ! TODO: need to allow for mixed elements...
+        porder = 1 ! Element order
+        npbou = 4 ! TODO: Need to get his from somewhere...
+        nstep = 10 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
@@ -133,10 +133,7 @@ program sod2d
         !
         ! Zero aux1 entries that belong to a boundary
         !
-        call nvtxStartRange("Label 1")
         do ipoin = 1,npoin       ! Loop over all nodes to fill aux()
-           write(itcount,'(i4)') ipoin
-           call nvtxStartRange("Label "//itcount,ipoin)
            do iboun = 1,nboun    ! Loop over element edges belonging to a boundary
               do ipbou = 1,npbou ! Loop over nodes on an element face belonging to a boundary
                  if (bound(iboun,ipbou) == ipoin) then
@@ -145,9 +142,7 @@ program sod2d
                  end if
               end do
            end do
-           call nvtxEndRange
         end do
-        call nvtxEndRange
 
         !
         ! Determine how many nodes are boundary nodes
@@ -400,6 +395,7 @@ program sod2d
 #ifdef GPU
 
         ! Range with standard color
+        call nvtxStartRange("Memory Management")
 
         ! Mesh info
 
@@ -447,6 +443,7 @@ program sod2d
         gpcar_d = gpcar_d
 
         ! End nvtx range
+        call nvtxEndRange
 
 #endif
 
@@ -455,6 +452,8 @@ program sod2d
         !*********************************************************************!
 
         counter = 1
+
+        call nvtxStartRange("Start RK4")
         do istep = 1,nstep
 
            write(*,*) '   --| STEP: ', istep
@@ -470,6 +469,10 @@ program sod2d
            E(:,1) = E(:,2)
            Tem(:,1) = Tem(:,2)
            e_int(:,1) = e_int(:,2)
+
+           ! nvtx range for full RK
+           write(timeStep,'(i4)') istep
+           call nvtxStartRange("RK4 step "//timeStep,istep)
 
            call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                      ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
@@ -491,8 +494,10 @@ program sod2d
            call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
                                 rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
 
+           call nvtxEndRange
            counter = counter+1
 
         end do
+        call nvtxEndRange
 
 end program sod2d

@@ -27,19 +27,22 @@ for line in fCoord:
     dims = len(data)-1
     x   = float(data[1])
     y   = float(data[2])
+    z   = float(data[3])
 
     if x < c:
         vx = 0.0
         vy = 0.0
+        vz = 0.0
         pr = 1.0
         rho = 1.0
     elif x>= c:
         vx = 0.0
         vy = 0.0
+        vz = 0.0
         pr = 0.1
         rho = 0.125
 
-    fVel.write('{} {} {}\n'.format(pid,vx,vy))
+    fVel.write('{} {} {} {}\n'.format(pid,vx,vy,vz))
     fPress.write('{} {}\n'.format(pid,pr))
     fDensi.write('{} {}\n'.format(pid,rho))
         

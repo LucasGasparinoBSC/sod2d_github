@@ -1,6 +1,5 @@
 module mod_nvtx
    use iso_c_binding
-#if defined(_OPENACC)
    use cudafor
    implicit none
 
@@ -44,14 +43,12 @@ module mod_nvtx
       end subroutine nvtxRangePop
    end interface nvtxRangePop
 #endif
-#endif
 
 contains
 
    subroutine nvtxStartRange(name, id)
       character(kind=c_char, len=*) :: name
       integer, optional :: id
-#if defined(_OPENACC)
 #if defined(_USE_NVTX)
       type(nvtxEventAttributes) :: event
       integer :: istat
@@ -67,23 +64,19 @@ contains
          call nvtxRangePushEx(event)
       end if
 #endif
-#endif
    end subroutine nvtxStartRange
 
    subroutine nvtxEndRange
-#if defined(_OPENACC)
 #if defined(_USE_NVTX)
       integer :: istat
       istat = cudaDeviceSynchronize()
       call nvtxRangePop
-#endif
 #endif
    end subroutine nvtxEndRange
 
    subroutine nvtxStartRangeAsync(name, id)
       character(kind=c_char, len=*) :: name
       integer, optional :: id
-#if defined(_OPENACC)
 #if defined(_USE_NVTX)
       type(nvtxEventAttributes) :: event
       tempName = trim(name)//c_null_char
@@ -95,14 +88,11 @@ contains
          call nvtxRangePushEx(event)
       end if
 #endif
-#endif
    end subroutine nvtxStartRangeAsync
 
    subroutine nvtxEndRangeAsync
-#if defined(_OPENACC)
 #if defined(_USE_NVTX)
       call nvtxRangePop
-#endif
 #endif
    end subroutine nvtxEndRangeAsync
 

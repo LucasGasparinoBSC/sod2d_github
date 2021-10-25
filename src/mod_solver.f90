@@ -1,5 +1,7 @@
 module mod_solver
 
+      use mod_nvtx
+
       contains
 
               subroutine lumped_solver_scal(npoin,Ml,R)
@@ -44,6 +46,9 @@ module mod_solver
                       !
                       ! Compute Ar
                       !
+                      !
+                      call nvtxStartRange("Scalar APINV")
+
                       Ar = Mc
 
                       do ipoin = 1,npoin
@@ -75,6 +80,7 @@ module mod_solver
                          x = x+v
                       end do
                       R = x
+                      call nvtxEndRange
 
               end subroutine approx_inverse_scalar
 
@@ -93,6 +99,7 @@ module mod_solver
                       !
                       ! Compute Ar
                       !
+                      call nvtxStartRange("Vector APINV")
                       Ar = Mc
                       do ipoin = 1,npoin
                          rowb = rdom(ipoin)+1
@@ -125,6 +132,7 @@ module mod_solver
                          end do
                          R(:,idime) = x
                       end do
+                      call nvtxEndRange
 
               end subroutine approx_inverse_vect
 

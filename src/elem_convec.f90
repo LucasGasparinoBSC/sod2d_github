@@ -1,5 +1,7 @@
 module elem_convec
 
+      use mod_nvtx
+
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! Computes convective term for Euler/NS equation system, as well             !
       ! as for any generic scalar transport that might occur. Based                !
@@ -31,6 +33,7 @@ module elem_convec
                       real(8)                 :: Re(nnode), el_q(nnode,ndime)
 
                       Rmass = 0.0d0
+                      call nvtxStartRange("Mass Convection")
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -53,6 +56,7 @@ module elem_convec
                          !
                          Rmass(ind) = Rmass(ind)+Re(1:nnode)
                       end do
+                      call nvtxEndRange
 
               end subroutine mass_convec
 
@@ -80,6 +84,7 @@ module elem_convec
                       real(8)                 :: el_q(nnode,ndime), el_u(nnode,ndime), el_pr(nnode)
 
                       Rmom = 0.0d0
+                      call nvtxStartRange("Momentum convection")
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -117,6 +122,7 @@ module elem_convec
                             Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
                          end do
                       end do
+                      call nvtxEndRange
 
               end subroutine mom_convec
 
@@ -143,6 +149,7 @@ module elem_convec
                       real(8)                 :: Re(nnode), fener(npoin,ndime)
                       real(8)                 :: el_fener(nnode,ndime)
 
+                      call nvtxStartRange("Energy Convection")
                       !
                       ! Flux f = u*(E+p)
                       !
@@ -173,6 +180,7 @@ module elem_convec
                          !
                          Rener(ind) = Rener(ind)+Re(1:nnode)
                       end do
+                      call nvtxEndRange
 
               end subroutine ener_convec
 
@@ -191,8 +199,10 @@ module elem_convec
                       integer(4)                       :: ind(nnode)
                       integer(4)                       :: ielem, igaus, inode, jnode, idime
                       real(8)                          :: Re(nnode), el_q(nnode,ndime), el_a(nnode)
+                      real(8)                          :: tmp
 
                       Rconvec = 0.0d0
+                      call nvtxStartRange("Generic Convection")
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -206,11 +216,11 @@ module elem_convec
                          ! Quadrature
                          !
                          do igaus = 1,ngaus
+                            tmp = dot_product(Ngp(igaus,:),el_a(:))
                             do inode = 1,nnode
                                do idime = 1,ndime
                                   do jnode = 1,nnode
-                                     Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                                 dot_product(Ngp(igaus,:),el_a(:))* &
+                                     Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp * &
                                                  (gpcar(idime,jnode,igaus,ielem)*el_q(jnode,idime))
                                   end do
                                end do
@@ -221,6 +231,7 @@ module elem_convec
                          !
                          Rconvec(ind) = Rconvec(ind)+Re(1:nnode)
                       end do
+                      call nvtxEndRange
 
               end subroutine generic_scalar_convec
 

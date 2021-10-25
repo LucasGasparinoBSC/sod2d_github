@@ -2,7 +2,7 @@ Mesh.MshFileVersion = 2.2;
 
 L = 8.0;
 H = 2.0;
-nx = 4;
+nx = 16;
 dx = H/nx;
 
 Point(1) = {-L/2,-H/2,0.0,dx};
@@ -29,5 +29,12 @@ Transfinite Surface {1};
 Transfinite Surface {2};
 Recombine Surface {1, 2};
 
-Physical Curve("wall") = {5, 4, 1, 2};
-Physical Surface("fluid") = {1, 2};
+Extrude {0, 0, 2} {
+  Surface{1}; Surface{2};
+  Layers{16};
+  Recombine;
+}
+
+Physical Surface("wall_y") = {24, 46, 16, 38};
+Physical Surface("wall_z") = {1, 29, 2, 51};
+Physical Volume("fluid") = {1, 2};
