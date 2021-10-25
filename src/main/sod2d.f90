@@ -6,6 +6,7 @@ program sod2d
         !*********************************************************************!
 
 #ifdef GPU
+        use mod_nvtx
         use cudafor
         use mod_gpu_vars
 #endif
@@ -53,6 +54,7 @@ program sod2d
         character(5)               :: matrix_type, solver_type
 
         integer(4) :: counter
+        character(len=4) :: itcount
 
         !*********************************************************************!
         ! Basic data, hardcoded for now                                       !
@@ -60,10 +62,10 @@ program sod2d
 
         write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
         !read(*,*) ndime
-        ndime = 3!2 ! NVVP
-        nnode = 27!4 ! TODO: need to allow for mixed elements...
+        ndime = 2 ! NVVP
+        nnode = 4 ! TODO: need to allow for mixed elements...
         porder = 2 ! Element order
-        npbou = 9!2 ! TODO: Need to get his from somewhere...
+        npbou = 2 ! TODO: Need to get his from somewhere...
         nstep = 1 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
@@ -131,7 +133,10 @@ program sod2d
         !
         ! Zero aux1 entries that belong to a boundary
         !
+        call nvtxStartRange("Label 1")
         do ipoin = 1,npoin       ! Loop over all nodes to fill aux()
+           write(itcount,'(i4)') ipoin
+           call nvtxStartRange("Label "//itcount,ipoin)
            do iboun = 1,nboun    ! Loop over element edges belonging to a boundary
               do ipbou = 1,npbou ! Loop over nodes on an element face belonging to a boundary
                  if (bound(iboun,ipbou) == ipoin) then
@@ -140,7 +145,9 @@ program sod2d
                  end if
               end do
            end do
+           call nvtxEndRange
         end do
+        call nvtxEndRange
 
         !
         ! Determine how many nodes are boundary nodes
@@ -392,6 +399,8 @@ program sod2d
 
 #ifdef GPU
 
+        ! Range with standard color
+
         ! Mesh info
 
         allocate(connec_d(nelem,nnode))
@@ -436,6 +445,8 @@ program sod2d
         Ngp_d = Ngp
         gpvol_d = gpvol
         gpcar_d = gpcar_d
+
+        ! End nvtx range
 
 #endif
 
