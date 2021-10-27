@@ -1,5 +1,7 @@
 module mass_matrix
 
+   use mod_nvtx
+
       contains
 
               subroutine consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc,weight)
@@ -19,11 +21,12 @@ module mass_matrix
                       real(8),    intent(out)          :: Mc(nzdom)
                       integer(4)                       :: ielem, igaus, inode, jnode, lnode(nnode), izdom, ipoin, jpoin
                       integer(4)                       :: jzdom, rowb, rowe
-                      real(8)                          :: Me(nnode,nnode), el_w(nnode)
+                      real(8)                          :: Me(nnode,nnode), el_w(nnode), tmp
 
                       !
                       ! Initialize Mc to zeros
                       !
+                      call nvtxStartRange("Mass Matrix")
                       Mc = 0.0d0
 
                       !
@@ -40,19 +43,23 @@ module mass_matrix
                          !
                          ! Form Mc_e with Gaussian quadrature (open)
                          !
+                         call nvtxStartRange("Elemental Matrix")
                          Me = 0.0d0
                          do igaus = 1,ngaus ! Loop over Gauss points
+                            tmp = dot_product(Ngp(igaus,:),el_w(:))
                             do inode = 1,nnode ! Loop over element nodes (row)
                                do jnode = 1,nnode ! Loop over element nodex (column)
                                   Me(inode,jnode) = Me(inode,jnode) + &
-                                     gpvol(1,igaus,ielem)*(dot_product(Ngp(igaus,:),el_w(:)))* &
+                                     gpvol(1,igaus,ielem)*(tmp)* &
                                      Ngp(igaus,inode)*Ngp(igaus,jnode) ! Gaussian quad.
                                end do
                             end do
                          end do
+                         call nvtxEndRange
                          !
                          ! Assemble Mc_e to CSR Mc
                          !
+                         call nvtxStartRange("Assembly")
                          do inode = 1,nnode
                             ipoin = lnode(inode) ! Global node/Mc row index
                             rowb = rdom(ipoin)+1 ! Start of izdom for cdom
@@ -71,7 +78,9 @@ module mass_matrix
                                Mc(izdom) = Mc(izdom) + Me(inode,jnode)
                             end do
                          end do
+                         call nvtxEndRange
                       end do
+                      call nvtxEndRange
 
               end subroutine consistent_mass
 

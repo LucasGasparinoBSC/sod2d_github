@@ -26,7 +26,7 @@ module mod_entropy_viscosity
                       real(8),    intent(in)  :: rhok(npoin), uk(npoin,ndime), prk(npoin), qk(npoin,ndime)     ! From substep
                       real(8),    intent(in)  :: rho(npoin,2), u(npoin,ndime,2), pr(npoin,2), q(npoin,ndime,2) ! From prediction
                       real(8),    intent(out) :: Reta(npoin), Rrho(npoin)
-                      integer(4)              :: ipoin
+                      integer(4)              :: ipoin, idime
                       real(8)                 :: eta(npoin), eta_p(npoin), alpha(npoin), alpha_p(npoin)
                       real(8)                 :: f_eta(npoin,ndime), f_rho(npoin,ndime), R1(npoin), R2(npoin)
                       real(8)                 :: aux1(npoin)
@@ -36,30 +36,38 @@ module mod_entropy_viscosity
                        ! Entropy function and temporal terms
                        !
                        call nvtxStartRange("Entropy transport")
+                       eta = (rhok/(gamma_gas-1.0d0))*(prk/(rhok**gamma_gas))
+                       eta_p = (rho(:,1)/(gamma_gas-1.0d0))*(pr(:,1)/(rho(:,1)**gamma_gas))
                        alpha = eta/rhok
                        call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
-                       do ipoin = 1,npoin
+                       do idime = 1,ndime
+                          f_eta(:,idime) = uk(:,idime)*eta(:)
+                          f_rho(:,idime) = qk(:,idime)
+                       end do
+                       !do ipoin = 1,npoin
 
                           !
                           ! Current (substesp values)
                           !
-                          eta(ipoin) = (rhok(ipoin)/(gamma_gas-1.0d0))*log(prk(ipoin)/(rhok(ipoin)**gamma_gas))
-                          f_eta(ipoin,1:ndime) = uk(ipoin,1:ndime)*eta(ipoin)
+                          !eta(ipoin) = (rhok(ipoin)/(gamma_gas-1.0d0))*log(prk(ipoin)/(rhok(ipoin)**gamma_gas))
+                          !f_eta(ipoin,1:ndime) = uk(ipoin,1:ndime)*eta(ipoin)
                           !alpha(ipoin) = eta(ipoin)/rhok(ipoin)
-                          f_rho(ipoin,1:ndime) = qk(ipoin,1:ndime)
+                          !f_rho(ipoin,1:ndime) = qk(ipoin,1:ndime)
 
                           !
                           ! Prediction
                           !
-                          eta_p(ipoin) = (rho(ipoin,1)/(gamma_gas-1.0d0))*log(pr(ipoin,1)/(rho(ipoin,1)**gamma_gas))
+                          !eta_p(ipoin) = (rho(ipoin,1)/(gamma_gas-1.0d0))*log(pr(ipoin,1)/(rho(ipoin,1)**gamma_gas))
                           !alpha_p(ipoin) = eta_p(ipoin)/rho(ipoin,1)
 
                           !
                           ! Temporal term
                           !
-                          R1(ipoin) = (eta_p(ipoin)-eta(ipoin))/dt  ! Temporal entropy
-                          R2(ipoin) = (rho(ipoin,1)-rhok(ipoin))/dt ! Temporal mass
-                       end do
+                          !R1(ipoin) = (eta_p(ipoin)-eta(ipoin))/dt  ! Temporal entropy
+                          !R2(ipoin) = (rho(ipoin,1)-rhok(ipoin))/dt ! Temporal mass
+                       !end do
+                       R1 = (eta_p-eta)/dt  ! Temporal entropy
+                       R2 = (rho(:,1)-rhok)/dt ! Temporal mass
                        call nvtxEndRange
 
                        !
@@ -132,8 +140,8 @@ module mod_entropy_viscosity
                          ! Select against Upwind viscosity
                          !
                          betae = 0.5d0*helem(ielem)*maxval(abs(L3))
-                         mu_e(ielem) = maxval(abs(rhoe))*min(Ve,betae) ! Dynamic viscosity
-                         !mu_e(ielem) = betae
+                         !mu_e(ielem) = maxval(abs(rhoe))*min(Ve,betae) ! Dynamic viscosity
+                         mu_e(ielem) = betae
                       end do
 
               end subroutine smart_visc

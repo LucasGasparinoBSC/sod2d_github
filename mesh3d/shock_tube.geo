@@ -2,7 +2,7 @@ Mesh.MshFileVersion = 2.2;
 
 L = 8.0;
 H = 2.0;
-nx = 16;
+nx = 8;
 dx = H/nx;
 
 Point(1) = {-L/2,-H/2,0.0,dx};
@@ -31,7 +31,7 @@ Recombine Surface {1, 2};
 
 Extrude {0, 0, 2} {
   Surface{1}; Surface{2};
-  Layers{16};
+  Layers{8};
   Recombine;
 }
 

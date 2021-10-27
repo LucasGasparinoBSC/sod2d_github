@@ -63,16 +63,16 @@ program sod2d
         write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
         !read(*,*) ndime
         ndime = 3 ! NVVP
-        nnode = 8 ! TODO: need to allow for mixed elements...
-        porder = 1 ! Element order
-        npbou = 4 ! TODO: Need to get his from somewhere...
+        nnode = 27 ! TODO: need to allow for mixed elements...
+        porder = 2 ! Element order
+        npbou = 9 ! TODO: Need to get his from somewhere...
         nstep = 10 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0025d0 ! TODO: make it adaptive...
+        dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -318,7 +318,7 @@ program sod2d
               if (nnode == 8) then
                  call hex08(s,t,z,N,dN)
               else if (nnode == 27) then
-                 !call hex27(s,t,z,N,dN)
+                 call hex27(s,t,z,N,dN)
               else if (nnode == 64) then
                  !call hex64(s,t,z,N,dN)
               else
