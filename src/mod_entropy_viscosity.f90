@@ -1,5 +1,7 @@
 module mod_entropy_viscosity
 
+   use mod_nvtx
+
       ! TODO: Finish module and create unit tests
 
       contains
@@ -33,6 +35,7 @@ module mod_entropy_viscosity
                        !
                        ! Entropy function and temporal terms
                        !
+                       call nvtxStartRange("Entropy transport")
                        alpha = eta/rhok
                        call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
                        do ipoin = 1,npoin
@@ -57,29 +60,36 @@ module mod_entropy_viscosity
                           R1(ipoin) = (eta_p(ipoin)-eta(ipoin))/dt  ! Temporal entropy
                           R2(ipoin) = (rho(ipoin,1)-rhok(ipoin))/dt ! Temporal mass
                        end do
+                       call nvtxEndRange
 
                        !
                        ! Alter R1 and R2 with Mc
                        !
+                       call nvtxStartRange("Modify RHS")
                        aux1 = R1
                        call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,aux1,R1)
                        aux1 = R2
                        call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mcw,aux1,R2)
+                       call nvtxEndRange
 
                        !
                        ! Compute both residuals
                        !
+                       call nvtxStartRange("Residual 1")
                        Reta = 0.0d0 ! Entropy residual
                        Rrho = 0.0d0 ! Mass residual
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_eta,Reta) ! Entropy convec
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho,alpha) ! Mass convec
+                       call nvtxEndRange
 
+                       call nvtxStartRange("Residual 2")
                        Reta = Reta+1.0d0*R1
                        call lumped_solver_scal(npoin,Ml,Reta)
                        call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
                        Rrho = Rrho+1.0d0*R2
                        call lumped_solver_scal(npoin,Ml,Rrho)
                        call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rrho)
+                       call nvtxEndRange
 
               end subroutine residuals
 

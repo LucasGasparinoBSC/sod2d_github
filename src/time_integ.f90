@@ -1,5 +1,6 @@
 module time_integ
 
+      use mod_nvtx
       use elem_convec
       use elem_diffu
       use mod_solver
@@ -80,6 +81,7 @@ module time_integ
                          !
                          ! Compute Reta and Rrho for selector
                          !
+                         call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
@@ -91,6 +93,7 @@ module time_integ
                          !
                          call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
                                          gamma_gas,rho(:,2),u(:,:,2),pr(:,2),helem,mu_e)
+                         call nvtxEndRange
 
                       end if
 
@@ -183,6 +186,7 @@ module time_integ
                          !
                          ! Compute Reta and Rrho for selector
                          !
+                         call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho_1, u_1, pr_1, q_1, &
@@ -194,6 +198,7 @@ module time_integ
                          !
                          call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
                                          gamma_gas,rho_1,u_1,pr_1,helem,mu_e)
+                         call nvtxEndRange
 
                       end if
 
@@ -277,6 +282,7 @@ module time_integ
                          !
                          ! Compute Reta and Rrho for selector
                          !
+                         call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho_2, u_2, pr_2, q_2, &
@@ -288,6 +294,7 @@ module time_integ
                          !
                          call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
                                          gamma_gas,rho_2,u_2,pr_2,helem,mu_e)
+                         call nvtxEndRange
 
                       end if
 
@@ -371,6 +378,7 @@ module time_integ
                          !
                          ! Compute Reta and Rrho for selector
                          !
+                         call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
                                    rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
                                    dt, rho_3, u_3, pr_3, q_3, &
@@ -382,6 +390,7 @@ module time_integ
                          !
                          call smart_visc(nelem,nnode,ndime,npoin,connec,Reta,Rrho, &
                                          gamma_gas,rho_3,u_3,pr_3,helem,mu_e)
+                         call nvtxEndRange
 
                       end if
 
@@ -449,6 +458,7 @@ module time_integ
                       ! Update
                       !
 
+                      call nvtxStartRange("Update")
                       rho(:,pos) = rho_4
                       u(:,:,pos) = u_4
                       pr(:,pos) = pr_4
@@ -456,6 +466,7 @@ module time_integ
                       q(:,:,pos) = q_4
                       e_int(:,pos) = e_int_4
                       Tem(:,pos) = Tem_4
+                      call nvtxEndRange
 
               end subroutine rk_4_main
                       

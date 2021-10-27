@@ -146,6 +146,7 @@ module mod_solver
                       real(8),    intent(out) :: u(npoin)
                       integer(4)              :: ipoin, izdom, jpoin, rowb, rowe
 
+                      call nvtxStartRange("SPMV")
                       u = 0.0d0
                       do ipoin = 1,npoin
                          !
@@ -161,6 +162,7 @@ module mod_solver
                             u(ipoin) = u(ipoin)+Mc(izdom)*v(jpoin) ! Dot product
                          end do
                       end do
+                      call nvtxEndRange
 
               end subroutine CSR_SpMV_scal
 

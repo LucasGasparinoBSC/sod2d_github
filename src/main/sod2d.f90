@@ -487,6 +487,7 @@ program sod2d
                      ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
                      Ngp,gpcar,Ml,Mc,gpvol,dt,helem,Rgas,gamma_gas, &
                      rho,u,q,pr,E,Tem,e_int,mu_e)
+           call nvtxEndRange
 
            !
            ! Call VTK output
@@ -494,7 +495,6 @@ program sod2d
            call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
                                 rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
 
-           call nvtxEndRange
            counter = counter+1
 
         end do
