@@ -43,7 +43,7 @@ module elem_convec
                          !
                          ! Quadrature
                          !
-                         !$acc loop vector colllapse(2)
+                         !$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
                                tmp = dot_product(gpcar(idime,:,igaus,ielem),el_q(:,idime))
@@ -58,7 +58,7 @@ module elem_convec
                          ! Assembly
                          !
                          do inode = 1,nnode
-                            !$acc atomic udpate
+                            !$acc atomic update
                             Rmass(ind(inode)) = Rmass(ind(inode))+Re(inode)
                             !$acc end atomic
                          end do
@@ -87,8 +87,9 @@ module elem_convec
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode
-                      real(8)                 :: Re(nnode,ndime), aux, divgp(ndime,ngaus), grpgp(ndime,ngaus)
+                      real(8)                 :: Re(nnode,ndime), divgp(ndime,ngaus), grpgp(ndime,ngaus)
                       real(8)                 :: el_q(nnode,ndime), el_u(nnode,ndime), el_pr(nnode)
+                      real(8)                 :: tmp1,tmp2,tmp3(nnode)
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum convection")
@@ -105,13 +106,12 @@ module elem_convec
                             divgp = 0.0d0
                             grpgp = 0.0d0
                             do idime = 1,ndime
-                               do jnode = 1,nnode
-                                  do jdime = 1,ndime
-                                     aux = el_q(jnode,idime)*el_u(jnode,jdime) ! qi * uj
-                                     divgp(idime,igaus) = divgp(idime,igaus) + &
-                                             gpcar(jdime,jnode,igaus,ielem)*aux
-                                  end do
-                                  grpgp(idime,igaus) = grpgp(idime,igaus)+gpcar(idime,jnode,igaus,ielem)*el_pr(jnode)
+                               tmp1 = dot_product(gpcar(idime,:,igaus,ielem),el_pr)
+                               grpgp(idime,igaus) = grpgp(idime,igaus)+tmp1
+                               do jdime = 1,ndime
+                                  tmp3(:) = el_q(:,idime)*el_u(:,jdime) ! qi * uj
+                                  tmp2 = dot_product(gpcar(jdime,:,igaus,ielem),tmp3(:))
+                                  divgp(idime,igaus) = divgp(idime,igaus) + tmp2
                                end do
                                !
                                ! Quadrature
@@ -170,10 +170,10 @@ module elem_convec
                          !
                          ! Quadrature
                          !
-                         !$acc parallel loop vector collapse(2)
+                         !$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
-                               el_fener(1:nnode,idime) = el_u(1:nnode,dime)*(el_E(1:nnode)+el_pr(1:nnode))
+                               el_fener(1:nnode,idime) = el_u(1:nnode,idime)*(el_E(1:nnode)+el_pr(1:nnode))
                                tmp = dot_product(gpcar(idime,:,igaus,ielem),el_fener(:,idime))
                                !$acc loop seq
                                do inode = 1,nnode
@@ -185,7 +185,7 @@ module elem_convec
                          !
                          ! Assembly
                          !
-                         do inode = 1,nnnode
+                         do inode = 1,nnode
                             !$acc atomic update
                             Rener(ind(inode)) = Rener(ind(inode))+Re(inode)
                             !$acc end atomic

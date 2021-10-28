@@ -30,7 +30,7 @@ elseif (Fortran_COMPILER_NAME MATCHES "ifort.*")
   set (CMAKE_Fortran_FLAGS_DEBUG   "-mtune=native -list-line-len=512 -fpp -ftrapuv -check all,noarg_temp_created -traceback -debug full -warn all,nodec,nointerfaces -fp-stack-check -ansi-alias -O0 -g")
 elseif (Fortran_COMPILER_NAME MATCHES "nvfortran")
   # nvfortran
-  set (CMAKE_Fortran_FLAGS_RELEASE "-fast -fma -DGPU -D_USE_NVTX -cpp -gpu=cc70 -cuda")
+  set (CMAKE_Fortran_FLAGS_RELEASE "-fast -DGPU -D_USE_NVTX -cpp -gpu=cc70,managed -cuda -acc -Minfo=accel")
   set (CMAKE_Fortran_FLAGS_DEBUG   "-O0 -DGPU -cpp -Mcuda=cc70 -Wall -C -Ktrap=fp -g")
 else (Fortran_COMPILER_NAME MATCHES "gfortran.*")
   message ("CMAKE_Fortran_COMPILER full path: " ${CMAKE_Fortran_COMPILER})
