@@ -120,7 +120,7 @@ module mod_output
                    write(str1(1:8),'(i8)') npoin
                    write(ivtk,'(a)') 'VECTORS '//' VELOC '//' double'
                    do i = 1,npoin
-                      write(ivtk,*) u3d(i,:)
+                      write(ivtk,*) u3d(i,1:3)
                    end do
                    
                    !!
