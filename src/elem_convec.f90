@@ -93,14 +93,14 @@ module elem_convec
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum convection")
-                      !$acc parallel loop gang private(Re(:,:),divgp(:,:),grpgp(:,:),ind(:),el_q(:,:),el_u(:,:),el_pr(:),tmp3(:))
+                      !$acc parallel loop gang private(ind(:),el_q(:,:),el_u(:,:),el_pr(:),tmp3(:))
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          el_q(1:nnode,1:ndime) = q(ind,1:ndime)
                          el_u(1:nnode,1:ndime) = u(ind,1:ndime)
                          el_pr(1:nnode) = pr(ind)
-                         !$acc loop vector
+                         !$acc loop vector private(Re(:,:),divgp(:,:),grpgp(:,:),tmp3(:))
                          do igaus = 1,ngaus
                             !
                             ! Compute divergence(qu) and grad(p) at Gauss point
@@ -129,6 +129,7 @@ module elem_convec
                          !
                          ! Final assembly
                          !
+                         !$acc loop vector collapse(2)
                          do idime = 1,ndime
                             do inode = 1,nnode
                               !$acc atomic update
