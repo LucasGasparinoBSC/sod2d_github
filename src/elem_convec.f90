@@ -93,7 +93,7 @@ module elem_convec
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum convection")
-                      !$acc parallel loop gang
+                      !$acc parallel loop gang private(Re(:,:))
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -107,6 +107,7 @@ module elem_convec
                             !
                             divgp = 0.0d0
                             grpgp = 0.0d0
+                            !$acc loop seq
                             do idime = 1,ndime
                                tmp1 = dot_product(gpcar(idime,:,igaus,ielem),el_pr(:))
                                grpgp(idime,igaus) = grpgp(idime,igaus)+tmp1
