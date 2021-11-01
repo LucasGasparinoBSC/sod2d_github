@@ -30,7 +30,7 @@ module elem_convec
                       real(8),    intent(out) :: Rmass(npoin)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, jnode, idime
-                      real(8)                 :: Re(nnode), el_q(nnode,ndime)
+                      real(8)                 :: Re(nnode)
                       real(8)                 :: tmp
 
                       Rmass = 0.0d0
@@ -39,14 +39,13 @@ module elem_convec
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         el_q(1:nnode,1:ndime) = q(ind,1:ndime)
                          !
                          ! Quadrature
                          !
                          !$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
-                               tmp = dot_product(gpcar(idime,:,igaus,ielem),el_q(:,idime))
+                               tmp = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
                                !$acc loop seq
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
@@ -88,38 +87,34 @@ module elem_convec
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode
                       real(8)                 :: Re(nnode,ndime), divgp(ndime,ngaus), grpgp(ndime,ngaus)
-                      real(8)                 :: el_q(nnode,ndime), el_u(nnode,ndime), el_pr(nnode)
                       real(8)                 :: tmp1,tmp2,tmp3(nnode)
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum convection")
-                      !$acc parallel loop gang private(ind(:),el_q(:,:),el_u(:,:),el_pr(:),tmp3(:))
+                      !!$acc parallel loop gang private(ind(:),el_q(:,:),el_u(:,:),el_pr(:),tmp3(:))
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         el_q(1:nnode,1:ndime) = q(ind,1:ndime)
-                         el_u(1:nnode,1:ndime) = u(ind,1:ndime)
-                         el_pr(1:nnode) = pr(ind)
-                         !$acc loop vector private(Re(:,:),divgp(:,:),grpgp(:,:),tmp3(:))
+                         !!$acc loop vector private(Re(:,:),divgp(:,:),grpgp(:,:),tmp3(:))
                          do igaus = 1,ngaus
                             !
                             ! Compute divergence(qu) and grad(p) at Gauss point
                             !
                             divgp = 0.0d0
                             grpgp = 0.0d0
-                            !$acc loop seq
+                            !!$acc loop seq
                             do idime = 1,ndime
-                               tmp1 = dot_product(gpcar(idime,:,igaus,ielem),el_pr(:))
+                               tmp1 = dot_product(gpcar(idime,:,igaus,ielem),pr(ind))
                                grpgp(idime,igaus) = grpgp(idime,igaus)+tmp1
                                do jdime = 1,ndime
-                                  tmp3(1:nnode) = el_q(1:nnode,idime)*el_u(1:nnode,jdime) ! qi * uj
+                                  tmp3(1:nnode) = q(ind,idime)*u(ind,jdime) ! qi * uj
                                   tmp2 = dot_product(gpcar(jdime,:,igaus,ielem),tmp3(:))
                                   divgp(idime,igaus) = divgp(idime,igaus) + tmp2
                                end do
                                !
                                ! Quadrature
                                !
-                               !$acc loop seq
+                               !!$acc loop seq
                                do inode = 1,nnode
                                   Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
                                                     (divgp(idime,igaus)+grpgp(idime,igaus))
@@ -129,16 +124,16 @@ module elem_convec
                          !
                          ! Final assembly
                          !
-                         !$acc loop vector collapse(2)
+                         !!$acc loop vector collapse(2)
                          do idime = 1,ndime
                             do inode = 1,nnode
-                              !$acc atomic update
+                              !!$acc atomic update
                               Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+Re(inode,idime)
-                              !$acc end atomic
+                              !!$acc end atomic
                             end do
                          end do
                       end do
-                      !$acc end parallel loop
+                      !!$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine mom_convec
@@ -164,8 +159,7 @@ module elem_convec
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, jnode, idime, ipoin
                       real(8)                 :: Re(nnode), fener(npoin,ndime)
-                      real(8)                 :: el_fener(nnode,ndime),el_u(nnode,ndime)
-                      real(8)                 :: el_E(nnode),el_pr(nnode)
+                      real(8)                 :: el_fener(nnode,ndime)
                       real(8)                 :: tmp
 
                       Rener = 0.0d0
@@ -174,16 +168,13 @@ module elem_convec
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         el_u(1:nnode,1:ndime) = u(ind,1:ndime)
-                         el_E(1:nnode) = E(ind)
-                         el_pr(1:nnode) = pr(ind)
                          !
                          ! Quadrature
                          !
                          !$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
-                               el_fener(1:nnode,idime) = el_u(1:nnode,idime)*(el_E(1:nnode)+el_pr(1:nnode))
+                               el_fener(1:nnode,idime) = u(ind,idime)*(E(ind)+pr(ind))
                                tmp = dot_product(gpcar(idime,:,igaus,ielem),el_fener(:,idime))
                                !$acc loop seq
                                do inode = 1,nnode
@@ -219,7 +210,7 @@ module elem_convec
                       real(8),    intent(out)          :: Rconvec(npoin)
                       integer(4)                       :: ind(nnode)
                       integer(4)                       :: ielem, igaus, inode, jnode, idime
-                      real(8)                          :: Re(nnode), el_q(nnode,ndime), el_a(nnode)
+                      real(8)                          :: Re(nnode), el_a(nnode)
                       real(8)                          :: tmp1, tmp2
 
                       Rconvec = 0.0d0
@@ -228,7 +219,6 @@ module elem_convec
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         el_q(1:nnode,1:ndime) = q(ind,1:ndime)
                          if (present(alpha)) then
                             el_a(1:nnode) = alpha(ind)
                          else
@@ -241,7 +231,7 @@ module elem_convec
                          do igaus = 1,ngaus
                             tmp1 = dot_product(Ngp(igaus,:),el_a(:))
                             do idime = 1,ndime
-                               tmp2 = dot_product(gpcar(idime,:,igaus,ielem),el_q(:,idime))
+                               tmp2 = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
                                !$acc loop seq
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1* &

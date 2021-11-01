@@ -11,8 +11,13 @@ module mod_solver
                       integer(4), intent(in)    :: npoin
                       real(8),    intent(in)    :: Ml(npoin)
                       real(8),    intent(inout) :: R(npoin)
+                      integer(4)                :: ipoin
 
-                      R = R/Ml
+                      !$acc parallel loop gang
+                      do ipoin = 1,npoin
+                         R(ipoin) = R(ipoin)/Ml(ipoin)
+                      end do
+                      !$acc end parallel loop
 
               end subroutine lumped_solver_scal
 
@@ -23,10 +28,14 @@ module mod_solver
                       integer(4), intent(in)    :: npoin, ndime
                       real(8),    intent(in)    :: Ml(npoin)
                       real(8),    intent(inout) :: R(npoin,ndime)
-                      integer(4)                :: idime
+                      integer(4)                :: idime, ipoin
 
                       do idime = 1,ndime
-                         R(:,idime) = R(:,idime)/Ml
+                         !$acc parallel loop gang
+                         do ipoin = 1,npoin
+                            R(ipoin,idime) = R(ipoin,idime)/Ml(ipoin)
+                         end do
+                         !$acc end parallel loop
                       end do
 
               end subroutine lumped_solver_vect
@@ -51,9 +60,11 @@ module mod_solver
 
                       Ar = Mc
 
+                      !$acc parallel loop gang
                       do ipoin = 1,npoin
                          rowb = rdom(ipoin)+1
                          rowe = rdom(ipoin+1)
+                         !$acc loop seq
                          do izdom = rowb,rowe
                             if(cdom(izdom) == ipoin) then
                                Ar(izdom) = Ml(ipoin)-Ar(izdom)
@@ -63,6 +74,7 @@ module mod_solver
                             Ar(izdom) = Ar(izdom)/Ml(ipoin)
                          end do
                       end do
+                      !$acc end parallel loop
 
                       !
                       ! Initialize series at k=0
@@ -101,9 +113,11 @@ module mod_solver
                       !
                       call nvtxStartRange("Vector APINV")
                       Ar = Mc
+                      !$acc parallel loop gang
                       do ipoin = 1,npoin
                          rowb = rdom(ipoin)+1
                          rowe = rdom(ipoin+1)
+                         !$acc loop seq
                          do izdom = rowb,rowe
                             if(cdom(izdom) == ipoin) then
                                Ar(izdom) = Ml(ipoin)-Ar(izdom)
@@ -113,6 +127,7 @@ module mod_solver
                             Ar(izdom) = Ar(izdom)/Ml(ipoin)
                          end do
                       end do
+                      !$acc end parallel loop
 
                       do idime = 1,ndime
                          !
@@ -148,6 +163,7 @@ module mod_solver
 
                       call nvtxStartRange("SPMV")
                       u = 0.0d0
+                      !$acc parallel loop gang
                       do ipoin = 1,npoin
                          !
                          ! Get CSR section for row ipoin
@@ -157,11 +173,13 @@ module mod_solver
                          !
                          ! Loop inside CSR section
                          !
+                         !!$acc loop seq
                          do izdom = rowb,rowe
                             jpoin = cdom(izdom) ! Col. index
                             u(ipoin) = u(ipoin)+Mc(izdom)*v(jpoin) ! Dot product
                          end do
                       end do
+                      !$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine CSR_SpMV_scal

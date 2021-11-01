@@ -21,27 +21,34 @@ module elem_diffu
                       real(8),    intent(out) :: Rmass(npoin)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, jnode, idime
-                      real(8)                 :: Re(nnode), el_rho(nnode), nu_e
+                      real(8)                 :: Re(nnode), nu_e
+                      real(8)                 :: tmp1(ndime), tmp2
 
                       Rmass = 0.0d0
                       call nvtxStartRange("Mass diffusion")
+                      !!$acc parallel loop gang
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         el_rho(1:nnode) = rho(ind)
-                         nu_e = mu_e(ielem)/maxval(abs(el_rho))
+                         nu_e = mu_e(ielem)/maxval(abs(rho(ind)))
+                         !!$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
-                               do inode = 1,nnode
-                                  do jnode = 1,nnode
-                                     Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*nu_e*gpcar(idime,inode,igaus,ielem)* &
-                                             gpcar(idime,jnode,igaus,ielem)*el_rho(jnode)
-                                  end do
-                               end do
+                               tmp1(idime) = dot_product(gpcar(idime,:,igaus,ielem),rho(ind))
+                            end do
+                            !!$acc loop seq
+                            do inode = 1,nnode
+                               tmp2 = dot_product(gpcar(:,inode,igaus,ielem),tmp1(:))
+                               Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*tmp2
                             end do
                          end do
-                         Rmass(ind) = Rmass(ind)+Re(1:nnode)
+                         do inode = 1,nnode
+                            !!$acc atomic update
+                            Rmass(ind(inode)) = Rmass(ind(inode))+nu_e*Re(inode)
+                            !!$acc end atomic
+                         end do
                       end do
+                      !!$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine mass_diffusion
@@ -143,6 +150,7 @@ module elem_diffu
 
                       Rener = 0.0d0
                       call nvtxStartRange("Energy diffusion")
+                      !$acc parallel loop gang
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -153,19 +161,23 @@ module elem_diffu
                          !
                          ! Ke
                          !
+                         !$acc loop seq
                          do inode = 1,nnode
                             el_Ke(inode) = dot_product(el_u(inode,:),el_u(inode,:))/2.0d0
                          end do
                          grad_T = 0.0d0
                          grad_Ke = 0.0d0
+                         !$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
+                               !$acc loop seq
                                do jnode = 1,nnode
                                   grad_T(idime,igaus) = grad_T(idime,igaus) + &
                                           gpcar(idime,jnode,igaus,ielem)*el_Tem(jnode)
                                   grad_Ke(idime,igaus) = grad_Ke(idime,igaus) + &
                                           gpcar(idime,jnode,igaus,ielem)*el_Ke(jnode)
                                end do
+                               !$acc loop seq
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem) * &
                                           (gpcar(idime,inode,igaus,ielem)*kappa_e*grad_T(idime,igaus) + &
@@ -173,8 +185,13 @@ module elem_diffu
                                end do
                             end do
                          end do
-                         Rener(ind) = Rener(ind)+Re(1:nnode)
+                         do inode = 1,nnode
+                            !$acc atomic update
+                            Rener(ind(inode)) = Rener(ind(inode))+Re(inode)
+                            !$acc end atomic
+                         end do
                       end do
+                      !$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine ener_diffusion
