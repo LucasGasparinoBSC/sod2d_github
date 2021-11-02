@@ -59,87 +59,6 @@ module elem_diffu
               !
               ! Old routine
               !
-              !!subroutine mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,mu_e,Rmom)
-
-              !!        ! TODO: Add. stab. viscosity
-
-              !!        implicit none
-
-              !!        integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
-              !!        integer(4), intent(in)  :: connec(nelem,nnode)
-              !!        real(8),    intent(in)  :: Ngp(ngaus,nnode)
-              !!        real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
-              !!        real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
-              !!        real(8),    intent(in)  :: u(npoin,ndime), mu_e(nelem)
-              !!        real(8),    intent(out) :: Rmom(npoin,ndime)
-              !!        integer(4)              :: ind(nnode)
-              !!        integer(4)              :: ielem, igaus, idime, jdime, inode, jnode, kdime
-              !!        real(8)                 :: Re(nnode,ndime), aux(ndime,ngaus), tau(ndime,ndime,ngaus)
-              !!        real(8)                 :: el_u(nnode,ndime), grad_u(ndime,ndime,ngaus), div_u(ndime,ndime,ngaus)
-
-              !!        Rmom = 0.0d0
-              !!        call nvtxStartRange("Momentum diffusion")
-              !!        do ielem = 1,nelem
-              !!           Re = 0.0d0
-              !!           ind = connec(ielem,:)
-              !!           el_u(1:nnode,1:ndime) = u(ind,1:ndime)
-              !!           grad_u = 0.0d0
-              !!           div_u = 0.0d0
-              !!           do igaus = 1,ngaus
-              !!              do idime = 1,ndime
-              !!                 !
-              !!                 ! grad_u
-              !!                 !
-              !!                 do jnode = 1,nnode
-              !!                    do jdime = 1,ndime
-              !!                       grad_u(idime,jdime,igaus) = grad_u(idime,jdime,igaus) + &
-              !!                               gpcar(jdime,jnode,igaus,ielem)*el_u(jnode,idime)
-              !!                    end do
-              !!                 end do
-              !!                 !
-              !!                 ! div_u
-              !!                 !
-              !!                 do jnode = 1,nnode
-              !!                    do kdime = 1,ndime
-              !!                       div_u(idime,idime,igaus) = div_u(idime,idime,igaus) + &
-              !!                               gpcar(kdime,jnode,igaus,ielem)*el_u(jnode,kdime)
-              !!                    end do
-              !!                 end do
-              !!                 !
-              !!                 ! tau_ij = grad_u + grad_u^T - (2/3)*div_u
-              !!                 !
-              !!                 do jdime = 1,ndime
-              !!                    tau(idime,jdime,igaus) = 1.0d0*mu_e(ielem)*(grad_u(idime,jdime,igaus) + &
-              !!                            grad_u(jdime,idime,igaus) - &
-              !!                            (2.0d0/3.0d0)*div_u(idime,jdime,igaus))
-              !!                 end do
-              !!              end do
-              !!              !
-              !!              ! div(tau)
-              !!              !
-              !!              do idime = 1,ndime
-              !!                 do inode = 1,nnode
-              !!                    do jdime = 1,ndime
-              !!                       Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem) * &
-              !!                               gpcar(jdime,inode,igaus,ielem)*tau(idime,jdime,igaus)
-              !!                    end do
-              !!                 end do
-              !!              end do
-              !!           end do
-              !!           !
-              !!           ! Assembly
-              !!           !
-              !!           do idime = 1,ndime
-              !!              Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
-              !!           end do
-              !!        end do
-              !!        call nvtxEndRange
-
-              !!end subroutine mom_diffusion
-
-              !
-              ! New routine
-              !
               subroutine mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,mu_e,Rmom)
 
                       ! TODO: Add. stab. viscosity
@@ -155,50 +74,186 @@ module elem_diffu
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode, kdime
-                      real(8)                 :: tau(ndime,ndime), tmp
-                      real(8)                 :: grad_u(ndime,ndime), div_u(ndime,ndime), tmp_tau(ngaus)
+                      real(8)                 :: Re(nnode,ndime), aux(ndime,ngaus), tau(ndime,ndime,ngaus)
+                      real(8)                 :: el_u(nnode,ndime), grad_u(ndime,ndime,ngaus), div_u(ndime,ndime,ngaus)
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum diffusion")
                       do ielem = 1,nelem
+                         Re = 0.0d0
                          ind = connec(ielem,:)
-                         do inode = 1,nnode
-                            grad_u = 0.0d0
-                            div_u = 0.0d0
-                            do igaus = 1,ngaus
-                               do idime = 1,ndime
+                         el_u(1:nnode,1:ndime) = u(ind,1:ndime)
+                         grad_u = 0.0d0
+                         div_u = 0.0d0
+                         do igaus = 1,ngaus
+                            do idime = 1,ndime
+                               !
+                               ! grad_u
+                               !
+                               do jnode = 1,nnode
                                   do jdime = 1,ndime
-                                     grad_u(idime,jdime) = grad_u(idime,jdime) + &
-                                        gpcar(jdime,inode,igaus,ielem)*u(ind(inode),idime)
-                                     div_u(idime,idime) = div_u(idime,idime) + &
-                                        gpcar(jdime,inode,igaus,ielem)*u(ind(inode),jdime)
+                                     grad_u(idime,jdime,igaus) = grad_u(idime,jdime,igaus) + &
+                                             gpcar(jdime,jnode,igaus,ielem)*el_u(jnode,idime)
                                   end do
                                end do
-                            end do
-
-                            do idime = 1,ndime
+                               !
+                               ! div_u
+                               !
+                               do jnode = 1,nnode
+                                  do kdime = 1,ndime
+                                     div_u(idime,idime,igaus) = div_u(idime,idime,igaus) + &
+                                             gpcar(kdime,jnode,igaus,ielem)*el_u(jnode,kdime)
+                                  end do
+                               end do
+                               !
+                               ! tau_ij = grad_u + grad_u^T - (2/3)*div_u
+                               !
                                do jdime = 1,ndime
-                                  tau(idime,jdime) = 1.0d0*mu_e(ielem)*(grad_u(idime,jdime) + &
-                                     grad_u(jdime,idime) - &
-                                     (2.0d0/3.0d0)*div_u(idime,jdime))
+                                  tau(idime,jdime,igaus) = 1.0d0*mu_e(ielem)*(grad_u(idime,jdime,igaus) + &
+                                          grad_u(jdime,idime,igaus) - &
+                                          (2.0d0/3.0d0)*div_u(idime,jdime,igaus))
                                end do
                             end do
-
+                            !
+                            ! div(tau)
+                            !
                             do idime = 1,ndime
-                               tmp = 0.0d0
-                               do igaus = 1,ngaus
+                               do inode = 1,nnode
                                   do jdime = 1,ndime
-                                     tmp = tmp+(gpvol(1,igaus,ielem)*&
-                                        gpcar(jdime,inode,igaus,ielem)*tau(idime,jdime))
+                                     Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem) * &
+                                             gpcar(jdime,inode,igaus,ielem)*tau(idime,jdime,igaus)
                                   end do
                                end do
-                               Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+tmp
                             end do
+                         end do
+                         !
+                         ! Assembly
+                         !
+                         do idime = 1,ndime
+                            Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
                          end do
                       end do
                       call nvtxEndRange
 
               end subroutine mom_diffusion
+
+              !
+              ! New routine
+              !
+              !!!subroutine mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,mu_e,Rmom)
+
+              !!!        ! TODO: Add. stab. viscosity
+
+              !!!        implicit none
+
+              !!!        integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
+              !!!        integer(4), intent(in)  :: connec(nelem,nnode)
+              !!!        real(8),    intent(in)  :: Ngp(ngaus,nnode)
+              !!!        real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
+              !!!        real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
+              !!!        real(8),    intent(in)  :: u(npoin,ndime), mu_e(nelem)
+              !!!        real(8),    intent(out) :: Rmom(npoin,ndime)
+              !!!        integer(4)              :: ind(nnode)
+              !!!        integer(4)              :: ielem, igaus, idime, jdime, inode, jnode, kdime
+              !!!        !real(8)                 :: tau(ndime,ndime), tmp
+              !!!        !real(8)                 :: grad_u(ndime,ndime), div_u(ndime,ndime), tmp_tau(ngaus)
+              !!!        real(8)                  :: Re(nnode,ndime), twoThirds
+
+              !!!        real(8) :: grad_1, grad_2, grad_3, grad_4, grad_5, grad_6, grad_7, grad_8, grad_9
+              !!!        real(8) :: div_1, div_2, div_3, div_4, div_5, div_6, div_7, div_8, div_9
+              !!!        real(8) :: tau_1, tau_2, tau_3, tau_4, tau_5, tau_6, tau_7, tau_8, tau_9
+              !!!        real(8) :: tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9
+
+              !!!        twoThirds = 2.0d0/3.0d0
+              !!!        Rmom = 0.0d0
+              !!!        call nvtxStartRange("Momentum diffusion")
+              !!!        do ielem = 1,nelem
+              !!!           Re = 0.0d0
+              !!!           ind = connec(ielem,:)
+              !!!           !vector
+              !!!           do igaus = 1,ngaus
+              !!!              grad_1=0.0d0
+              !!!              grad_2=0.0d0
+              !!!              grad_3=0.0d0
+              !!!              grad_4=0.0d0
+              !!!              grad_5=0.0d0
+              !!!              grad_6=0.0d0
+              !!!              grad_7=0.0d0
+              !!!              grad_8=0.0d0
+              !!!              grad_9=0.0d0
+              !!!              div_1=0.0d0
+              !!!              div_2=0.0d0
+              !!!              div_3=0.0d0
+              !!!              div_4=0.0d0
+              !!!              div_5=0.0d0
+              !!!              div_6=0.0d0
+              !!!              div_7=0.0d0
+              !!!              div_8=0.0d0
+              !!!              div_9=0.0d0
+              !!!              tau_1=0.0d0
+              !!!              tau_2=0.0d0
+              !!!              tau_3=0.0d0
+              !!!              tau_4=0.0d0
+              !!!              tau_5=0.0d0
+              !!!              tau_6=0.0d0
+              !!!              tau_7=0.0d0
+              !!!              tau_8=0.0d0
+              !!!              tau_9=0.0d0
+              !!!              do inode = 1,nnode
+              !!!                 grad_1 = grad_1+gpcar(1,inode,igaus,ielem)*u(ind(inode),1)
+              !!!                 grad_2 = grad_2+gpcar(2,inode,igaus,ielem)*u(ind(inode),1)
+              !!!                 grad_3 = grad_3+gpcar(3,inode,igaus,ielem)*u(ind(inode),1)
+              !!!                 grad_4 = grad_4+gpcar(1,inode,igaus,ielem)*u(ind(inode),2)
+              !!!                 grad_5 = grad_5+gpcar(2,inode,igaus,ielem)*u(ind(inode),2)
+              !!!                 grad_6 = grad_6+gpcar(3,inode,igaus,ielem)*u(ind(inode),2)
+              !!!                 grad_7 = grad_7+gpcar(1,inode,igaus,ielem)*u(ind(inode),3)
+              !!!                 grad_8 = grad_8+gpcar(2,inode,igaus,ielem)*u(ind(inode),3)
+              !!!                 grad_9 = grad_9+gpcar(3,inode,igaus,ielem)*u(ind(inode),3)
+
+              !!!                 div_1 = div_1+gpcar(1,inode,igaus,ielem)*u(ind(inode),1)
+              !!!                 div_5 = div_5+gpcar(2,inode,igaus,ielem)*u(ind(inode),2)
+              !!!                 div_9 = div_9+gpcar(3,inode,igaus,ielem)*u(ind(inode),3)
+              !!!              end do
+              !!!              tmp1 = 0.0d0
+              !!!              tmp2 = 0.0d0
+              !!!              tmp3 = 0.0d0
+              !!!              do inode = 1,nnode
+              !!!                 tau_1 = mu_e(ielem)*(grad_1+grad_1-twoThirds*div_1)
+              !!!                 tau_2 = mu_e(ielem)*(grad_2+grad_4-twoThirds*div_2)
+              !!!                 tau_3 = mu_e(ielem)*(grad_3+grad_7-twoThirds*div_3)
+              !!!                 tau_4 = mu_e(ielem)*(grad_4+grad_2-twoThirds*div_4)
+              !!!                 tau_5 = mu_e(ielem)*(grad_5+grad_5-twoThirds*div_5)
+              !!!                 tau_6 = mu_e(ielem)*(grad_6+grad_8-twoThirds*div_6)
+              !!!                 tau_7 = mu_e(ielem)*(grad_7+grad_3-twoThirds*div_7)
+              !!!                 tau_8 = mu_e(ielem)*(grad_8+grad_6-twoThirds*div_8)
+              !!!                 tau_9 = mu_e(ielem)*(grad_9+grad_9-twoThirds*div_9)
+              !!!                 tmp1 = tmp1+(gpvol(1,igaus,idime)*gpcar(1,inode,igaus,ielem)*tau_1)
+              !!!                 tmp1 = tmp1+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_2)
+              !!!                 tmp1 = tmp1+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_3)
+              !!!                 tmp2 = tmp2+(gpvol(1,igaus,idime)*gpcar(1,inode,igaus,ielem)*tau_4)
+              !!!                 tmp2 = tmp2+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_5)
+              !!!                 tmp2 = tmp2+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_6)
+              !!!                 tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(1,inode,igaus,ielem)*tau_7)
+              !!!                 tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_8)
+              !!!                 tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_9)
+              !!!              end do
+              !!!              ! Atomic update
+              !!!              do inode = 1,nnode
+              !!!                 Re(inode,1) = Re(inode,1)+tmp1
+              !!!                 Re(inode,2) = Re(inode,2)+tmp2
+              !!!                 Re(inode,3) = Re(inode,3)+tmp3
+              !!!              end do
+              !!!           end do
+              !!!           do inode = 1,nnode
+              !!!              do idime = 1,ndime
+              !!!                 ! Atommic update
+              !!!                 Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+Re(inode,idime)
+              !!!              end do
+              !!!           end do
+              !!!        end do
+              !!!        call nvtxEndRange
+
+              !!!end subroutine mom_diffusion
 
               subroutine ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,Tem,mu_e,Rener)
 
