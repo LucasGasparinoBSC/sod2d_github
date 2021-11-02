@@ -35,18 +35,18 @@ module elem_convec
 
                       Rmass = 0.0d0
                       call nvtxStartRange("Mass Convection")
-                      !$acc parallel loop gang
+                      !!$acc parallel loop gang private(ind,Re)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          !
                          ! Quadrature
                          !
-                         !$acc loop vector collapse(2)
+                         !!$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
                                tmp = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
-                               !$acc loop seq
+                               !!$acc loop seq
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
                                               (tmp)
@@ -57,9 +57,9 @@ module elem_convec
                          ! Assembly
                          !
                          do inode = 1,nnode
-                            !$acc atomic update
+                            !!$acc atomic update
                             Rmass(ind(inode)) = Rmass(ind(inode))+Re(inode)
-                            !$acc end atomic
+                            !!$acc end atomic
                          end do
                       end do
                       call nvtxEndRange
@@ -86,54 +86,53 @@ module elem_convec
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode
-                      real(8)                 :: Re(nnode,ndime), divgp(ndime,ngaus), grpgp(ndime,ngaus)
-                      real(8)                 :: tmp1,tmp2,tmp3(nnode)
+                      real(8)                 :: Re(nnode,ndime), divgp, grpgp
+                      real(8)                 :: tmp3(nnode)
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum convection")
-                      !!$acc parallel loop gang private(ind(:),el_q(:,:),el_u(:,:),el_pr(:),tmp3(:))
+                      !!!$acc parallel loop gang private(ind,tmp3,Re)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         !!$acc loop vector private(Re(:,:),divgp(:,:),grpgp(:,:),tmp3(:))
+                         !!!$acc loop vector private(Re(:,:),divgp(:,:),grpgp(:,:),tmp3(:))
                          do igaus = 1,ngaus
                             !
                             ! Compute divergence(qu) and grad(p) at Gauss point
                             !
-                            divgp = 0.0d0
-                            grpgp = 0.0d0
-                            !!$acc loop seq
+                            !!!$acc loop seq
                             do idime = 1,ndime
-                               tmp1 = dot_product(gpcar(idime,:,igaus,ielem),pr(ind))
-                               grpgp(idime,igaus) = grpgp(idime,igaus)+tmp1
+                               divgp = 0.0d0
+                               grpgp = dot_product(gpcar(idime,:,igaus,ielem),pr(ind))
                                do jdime = 1,ndime
-                                  tmp3(1:nnode) = q(ind,idime)*u(ind,jdime) ! qi * uj
-                                  tmp2 = dot_product(gpcar(jdime,:,igaus,ielem),tmp3(:))
-                                  divgp(idime,igaus) = divgp(idime,igaus) + tmp2
+                                  do inode = 1,nnode
+                                     tmp3(inode) = q(ind(inode),idime)*u(ind(inode),jdime) ! qi * uj
+                                  end do
+                                  divgp = divgp+dot_product(gpcar(jdime,:,igaus,ielem),tmp3(:))
                                end do
                                !
                                ! Quadrature
                                !
-                               !!$acc loop seq
+                               !!!$acc loop seq
                                do inode = 1,nnode
                                   Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                                    (divgp(idime,igaus)+grpgp(idime,igaus))
+                                                    (divgp+grpgp)
                                end do
                             end do
                          end do
                          !
                          ! Final assembly
                          !
-                         !!$acc loop vector collapse(2)
+                         !!!$acc loop vector collapse(2)
                          do idime = 1,ndime
                             do inode = 1,nnode
-                              !!$acc atomic update
+                              !!!$acc atomic update
                               Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+Re(inode,idime)
-                              !!$acc end atomic
+                              !!!$acc end atomic
                             end do
                          end do
                       end do
-                      !!$acc end parallel loop
+                      !!!$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine mom_convec
@@ -164,19 +163,19 @@ module elem_convec
 
                       Rener = 0.0d0
                       call nvtxStartRange("Energy Convection")
-                      !$acc parallel loop gang
+                      !!$acc parallel loop gang
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          !
                          ! Quadrature
                          !
-                         !$acc loop vector collapse(2)
+                         !!$acc loop vector collapse(2)
                          do igaus = 1,ngaus
                             do idime = 1,ndime
                                el_fener(1:nnode,idime) = u(ind,idime)*(E(ind)+pr(ind))
                                tmp = dot_product(gpcar(idime,:,igaus,ielem),el_fener(:,idime))
-                               !$acc loop seq
+                               !!$acc loop seq
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
                                               (tmp)
@@ -187,9 +186,9 @@ module elem_convec
                          ! Assembly
                          !
                          do inode = 1,nnode
-                            !$acc atomic update
+                            !!$acc atomic update
                             Rener(ind(inode)) = Rener(ind(inode))+Re(inode)
-                            !$acc end atomic
+                            !!$acc end atomic
                          end do
                       end do
                       call nvtxEndRange
@@ -215,7 +214,7 @@ module elem_convec
 
                       Rconvec = 0.0d0
                       call nvtxStartRange("Generic Convection")
-                      !$acc parallel loop gang
+                      !!$acc parallel loop gang
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -227,12 +226,12 @@ module elem_convec
                          !
                          ! Quadrature
                          !
-                         !$acc loop vector
+                         !!$acc loop vector
                          do igaus = 1,ngaus
                             tmp1 = dot_product(Ngp(igaus,:),el_a(:))
                             do idime = 1,ndime
                                tmp2 = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
-                               !$acc loop seq
+                               !!$acc loop seq
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1* &
                                               (tmp2)
@@ -243,12 +242,12 @@ module elem_convec
                          ! Assembly
                          !
                          do inode = 1,nnode
-                            !$acc atomic update
+                            !!$acc atomic update
                             Rconvec(ind(inode)) = Rconvec(ind(inode))+Re(inode)
-                            !$acc end atomic
+                            !!$acc end atomic
                          end do
                       end do
-                      !$acc end parallel loop
+                      !!$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine generic_scalar_convec
