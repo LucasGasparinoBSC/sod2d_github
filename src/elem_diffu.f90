@@ -170,7 +170,7 @@ module elem_diffu
                       twoThirds = 2.0d0/3.0d0
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum diffusion")
-                      !$acc parallel loop gang private(ind,Re)
+                      !$acc parallel loop gang private(ind,Re) vector_length(128)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
