@@ -167,10 +167,11 @@ module elem_diffu
                       twoThirds = 2.0d0/3.0d0
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum diffusion")
+                      !$acc parallel loop gang private(ind,Re)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         !vector
+                         !$acc loop vector
                          do igaus = 1,ngaus
                             grad_1=0.0d0
                             grad_2=0.0d0
@@ -199,6 +200,7 @@ module elem_diffu
                             tau_7=0.0d0
                             tau_8=0.0d0
                             tau_9=0.0d0
+                            !$acc loop seq
                             do inode = 1,nnode
                                grad_1 = grad_1+gpcar(1,inode,igaus,ielem)*u(ind(inode),1)
                                grad_2 = grad_2+gpcar(2,inode,igaus,ielem)*u(ind(inode),1)
@@ -217,6 +219,7 @@ module elem_diffu
                             tmp1 = 0.0d0
                             tmp2 = 0.0d0
                             tmp3 = 0.0d0
+                            !$acc loop vector reduction(+:tmp1,tmp2,tmp3)
                             do inode = 1,nnode
                                tau_1 = mu_e(ielem)*(grad_1+grad_1-twoThirds*div_1)
                                tau_2 = mu_e(ielem)*(grad_2+grad_4-twoThirds*div_2)
@@ -237,20 +240,23 @@ module elem_diffu
                                tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_8)
                                tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_9)
                             end do
-                            ! Atomic update
+                            !$acc loop seq
                             do inode = 1,nnode
                                Re(inode,1) = Re(inode,1)+tmp1
                                Re(inode,2) = Re(inode,2)+tmp2
                                Re(inode,3) = Re(inode,3)+tmp3
                             end do
                          end do
+                         !$acc loop vector collapse(2)
                          do inode = 1,nnode
                             do idime = 1,ndime
-                               ! Atommic update
+                               !$acc atomic update
                                Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+Re(inode,idime)
+                               !$acc end atomic
                             end do
                          end do
                       end do
+                      !$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine mom_diffusion
