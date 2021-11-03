@@ -39,7 +39,7 @@ module mod_entropy_viscosity
                        eta = (rhok/(gamma_gas-1.0d0))*(prk/(rhok**gamma_gas))
                        eta_p = (rho(:,1)/(gamma_gas-1.0d0))*(pr(:,1)/(rho(:,1)**gamma_gas))
                        alpha = eta/rhok
-                       call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
+                       !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
                        do idime = 1,ndime
                           f_eta(:,idime) = uk(:,idime)*eta(:)
                           f_rho(:,idime) = qk(:,idime)
@@ -68,6 +68,11 @@ module mod_entropy_viscosity
                        !end do
                        R1 = (eta_p-eta)/dt  ! Temporal entropy
                        R2 = (rho(:,1)-rhok)/dt ! Temporal mass
+                       !
+                       ! Alter R2 with Mcw
+                       !
+                       call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,R2,aux1,alpha)
+                       R2 = aux1
                        call nvtxEndRange
 
                        !
@@ -76,8 +81,8 @@ module mod_entropy_viscosity
                        call nvtxStartRange("Modify RHS")
                        aux1 = R1
                        call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,aux1,R1)
-                       aux1 = R2
-                       call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mcw,aux1,R2)
+                       !aux1 = R2
+                       !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mcw,aux1,R2)
                        call nvtxEndRange
 
                        !
