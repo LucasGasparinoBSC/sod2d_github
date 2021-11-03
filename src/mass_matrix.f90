@@ -178,6 +178,7 @@ module mass_matrix
                       !
                       ! Loop over all elements to form Mc_e(nnode,nnode)
                       !
+                      !$acc parallel loop gang private(ind,el_w,Re)
                       do ielem = 1,nelem
                          ind(1:nnode) = connec(ielem,1:nnode) ! get elemental indices
                          if(present(weight))then
@@ -190,19 +191,25 @@ module mass_matrix
                          ! Form Re with Gaussian quadrature (open)
                          !
                          Re = 0.0d0
+                         !$acc loop seq
                          do igaus = 1,ngaus ! Loop over Gauss points
                             tmp1 = dot_product(Ngp(igaus,:),el_w(:))
                             tmp2 = dot_product(Ngp(igaus,:),v(ind))
+                            !$acc loop vector
                             do inode = 1,nnode ! Loop over element nodes (row)
                                Re(inode) = Re(inode) + &
                                   gpvol(1,igaus,ielem)*(tmp1)* &
                                   Ngp(igaus,inode)*tmp2
                             end do
                          end do
+                         !$acc loop vector
                          do inode = 1,nnode
+                            !$acc atomic update
                             Rmc(ind(inode)) = Rmc(ind(inode))+Re(inode)
+                            !$acc end atomic
                          end do
                       end do
+                      !$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine cmass_times_vector

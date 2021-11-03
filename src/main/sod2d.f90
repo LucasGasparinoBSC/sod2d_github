@@ -462,6 +462,7 @@ program sod2d
            ! Prediction
            !
            flag_predic = 1
+           call nvtxStartRange("Init pred "//timeStep,istep)
            rho(:,1) = rho(:,2)
            u(:,:,1) = u(:,:,2)
            q(:,:,1) = q(:,:,2)
@@ -469,6 +470,7 @@ program sod2d
            E(:,1) = E(:,2)
            Tem(:,1) = Tem(:,2)
            e_int(:,1) = e_int(:,2)
+           call nvtxEndRange
 
            ! nvtx range for full RK
            write(timeStep,'(i4)') istep
@@ -492,8 +494,10 @@ program sod2d
            !
            ! Call VTK output
            !
+           call nvtxStartRange("Output "//timeStep,istep)
            call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
                                 rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+           call nvtxEndRange
 
            counter = counter+1
 
