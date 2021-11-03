@@ -1,5 +1,7 @@
 module mod_graph
 
+      use mod_nvtx
+
       contains
 
               subroutine compute_nzdom(npoin,nnode,nelem,connec,nzdom,rdom,aux_cdom)
@@ -14,6 +16,7 @@ module mod_graph
                       integer(4)              :: list_used(npoin)
                       integer(4)              :: nnz_loc
 
+                      call nvtxStartRange("Compute graph")
                       nzdom = 0    ! non-zero entries initialized to zero
                       rdom = 0     ! Row idexes for CSR
                       aux_cdom = 0 ! Auxiliary col. indexes when nzdom is still unknown
@@ -61,6 +64,7 @@ module mod_graph
                             end do
                          end do
                       end do
+                      call nvtxEndRange
 
               end subroutine compute_nzdom
 

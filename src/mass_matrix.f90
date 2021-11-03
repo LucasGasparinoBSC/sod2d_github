@@ -68,14 +68,11 @@ module mass_matrix
                                jpoin = lnode(jnode) ! Nodes associated with ipoin on ielem
                                !
                                ! Loop over section of cdom to find out izdom
-                               !
-                               do jzdom = rowb,rowe
-                                  if (cdom(jzdom) == jpoin) then
-                                     izdom = jzdom
-                                     exit
-                                  end if
+                               jzdom = rowb
+                               do while ((cdom(jzdom) .ne. jpoin) .and. (jzdom .le. rowe))
+                                  jzdom = jzdom+1
                                end do
-                               Mc(izdom) = Mc(izdom) + Me(inode,jnode)
+                               Mc(jzdom) = Mc(jzdom) + Me(inode,jnode)
                             end do
                          end do
                          call nvtxEndRange
@@ -96,7 +93,11 @@ module mass_matrix
                       integer(4)                       :: ielem, igaus, inode, jnode, ind(nnode)
                       real(8)                          :: Me(nnode), alpha, aux1, aux2, el_w(nnode)
 
-                      Ml = 0.0d0
+                      !$acc kernels
+                      Ml(:) = 0.0d0
+                      !$acc end kernels
+
+                      !$acc parallel loop gang private(ind,Me,el_w)
                       do ielem = 1,nelem
                          ind(1:nnode) = connec(ielem,1:nnode)
                          if (present(weight)) then
@@ -105,13 +106,13 @@ module mass_matrix
                             el_w(:) = 1.0d0
                          end if
                          Me = 0.0d0
-                         alpha = 0.0d0
                          aux1 = 0.0d0
-                         aux2 = 0.0d0
                          !
                          ! tr[Mc]
                          !
+                         !$acc loop vector reduction(+:aux1)
                          do inode = 1,nnode
+                            !$acc loop seq
                             do igaus = 1,ngaus
                             aux1 = aux1+gpvol(1,igaus,ielem)*(dot_product(Ngp(igaus,:),el_w(:)))* &
                                    Ngp(igaus,inode)*Ngp(igaus,inode)
@@ -120,24 +121,33 @@ module mass_matrix
                          !
                          ! elem. mass
                          !
-                         do igaus = 1,ngaus
-                            aux2 = aux2+gpvol(1,igaus,ielem)
-                         end do
-                         !
-                         ! alpha
-                         !
-                         alpha = aux2/aux1
+                         !!!$acc loop seq
+                         !!do igaus = 1,ngaus
+                         !!   aux2 = aux2+gpvol(1,igaus,ielem)
+                         !!end do
                          !
                          ! Me
                          !
+                         !$acc loop seq
                          do igaus = 1,ngaus
+                            !$acc loop vector
                             do inode = 1,nnode
                                Me(inode) = Me(inode)+gpvol(1,igaus,ielem)*(Ngp(igaus,inode)**2)
                             end do
                          end do
-                         Me = alpha*Me
-                         Ml(ind) = Ml(ind)+Me
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            aux2 = 0.0d0
+                            !$acc loop seq
+                            do igaus = 1,ngaus
+                               aux2 = aux2+gpvol(1,igaus,ielem)
+                            end do
+                            !$acc atomic update
+                            Ml(ind(inode)) = Ml(ind(inode))+((aux2/aux1)*Me(inode))
+                            !$acc end atomic
+                         end do
                       end do
+                      !$acc end parallel loop
 
               end subroutine lumped_mass
 

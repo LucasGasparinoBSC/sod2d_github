@@ -31,15 +31,18 @@ module elem_diffu
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          nu_e = mu_e(ielem)/maxval(abs(rho(ind)))
-                         !!$acc loop vector collapse(2)
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            !$acc loop vector
-                            do idime = 1,ndime
-                               tmp1(idime) = dot_product(gpcar(idime,:,igaus,ielem),rho(ind))
-                            end do
+                            !!$acc loop seq
+                            !do idime = 1,ndime
+                            !   tmp1(idime) = dot_product(gpcar(idime,:,igaus,ielem),rho(ind))
+                            !end do
                             !$acc loop vector
                             do inode = 1,nnode
+                               !$acc loop seq
+                               do idime = 1,ndime
+                                  tmp1(idime) = dot_product(gpcar(idime,:,igaus,ielem),rho(ind))
+                               end do
                                tmp2 = dot_product(gpcar(:,inode,igaus,ielem),tmp1(:))
                                Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*tmp2
                             end do
@@ -171,7 +174,7 @@ module elem_diffu
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         !$acc loop vector
+                         !$acc loop seq
                          do igaus = 1,ngaus
                             grad_1=0.0d0
                             grad_2=0.0d0
@@ -200,7 +203,8 @@ module elem_diffu
                             tau_7=0.0d0
                             tau_8=0.0d0
                             tau_9=0.0d0
-                            !$acc loop seq
+                            !$acc loop vector &
+                            !$acc reduction(+:grad_1,grad_2,grad_3,grad_4,grad_5,grad_6,grad_7,grad_8,grad_9,div_1,div_5,div_9)
                             do inode = 1,nnode
                                grad_1 = grad_1+gpcar(1,inode,igaus,ielem)*u(ind(inode),1)
                                grad_2 = grad_2+gpcar(2,inode,igaus,ielem)*u(ind(inode),1)
@@ -240,7 +244,7 @@ module elem_diffu
                                tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_8)
                                tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_9)
                             end do
-                            !$acc loop seq
+                            !$acc loop vector
                             do inode = 1,nnode
                                Re(inode,1) = Re(inode,1)+tmp1
                                Re(inode,2) = Re(inode,2)+tmp2

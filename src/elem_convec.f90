@@ -42,11 +42,12 @@ module elem_convec
                          !
                          ! Quadrature
                          !
-                         !$acc loop vector collapse(2)
+                         !$acc loop seq
                          do igaus = 1,ngaus
+                            !$acc loop seq
                             do idime = 1,ndime
                                tmp = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
-                               !$acc loop seq
+                               !$acc loop vector
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
                                               (tmp)
@@ -97,17 +98,18 @@ module elem_convec
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
-                         !$acc loop vector collapse(2)
+                         !$acc loop seq
                          do igaus = 1,ngaus
                             !
                             ! Compute divergence(qu) and grad(p) at Gauss point
                             !
+                            !$acc loop seq
                             do idime = 1,ndime
                                divgp = 0.0d0
                                grpgp = dot_product(gpcar(idime,:,igaus,ielem),pr(ind))
-                               !$acc loop vector reduction(+:divgp)
+                               !$acc loop seq
                                do jdime = 1,ndime
-                                  !!$acc loop seq
+                                  !$acc loop vector
                                   do inode = 1,nnode
                                      tmp3(inode) = q(ind(inode),idime)*u(ind(inode),jdime) ! qi * uj
                                   end do
@@ -117,7 +119,7 @@ module elem_convec
                                !
                                ! Quadrature
                                !
-                               !$acc loop seq
+                               !$acc loop vector
                                do inode = 1,nnode
                                   Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
                                                     (divgp+grpgp)
@@ -172,8 +174,8 @@ module elem_convec
                          Re = 0.0d0
                          ind = connec(ielem,:)
                          !$acc loop vector collapse(2)
-                         do idime = 1,ndime
-                            do inode = 1,nnode
+                         do inode = 1,nnode
+                            do idime = 1,ndime
                                el_fener(inode,idime) = u(ind(inode),idime)*&
                                   (E(ind(inode))+pr(ind(inode)))
                             end do
@@ -181,11 +183,12 @@ module elem_convec
                          !
                          ! Quadrature
                          !
-                         !$acc loop vector collapse(2)
+                         !$acc loop seq
                          do igaus = 1,ngaus
+                            !$acc loop seq
                             do idime = 1,ndime
                                tmp = dot_product(gpcar(idime,:,igaus,ielem),el_fener(:,idime))
-                               !$acc loop seq
+                               !$acc loop vector
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
                                               (tmp)
@@ -238,12 +241,13 @@ module elem_convec
                          !
                          ! Quadrature
                          !
-                         !$acc loop vector
+                         !$acc loop seq
                          do igaus = 1,ngaus
                             tmp1 = dot_product(Ngp(igaus,:),el_a(:))
+                            !$acc loop seq
                             do idime = 1,ndime
                                tmp2 = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
-                               !$acc loop seq
+                               !$acc loop vector
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1* &
                                               (tmp2)

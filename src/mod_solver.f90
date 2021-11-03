@@ -13,11 +13,11 @@ module mod_solver
                       real(8),    intent(inout) :: R(npoin)
                       integer(4)                :: ipoin
 
-                      !$acc parallel loop gang
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          R(ipoin) = R(ipoin)/Ml(ipoin)
                       end do
-                      !$acc end parallel loop
+                      !$acc end parallel
 
               end subroutine lumped_solver_scal
 
@@ -30,13 +30,13 @@ module mod_solver
                       real(8),    intent(inout) :: R(npoin,ndime)
                       integer(4)                :: idime, ipoin
 
-                      do idime = 1,ndime
-                         !$acc parallel loop gang
-                         do ipoin = 1,npoin
+                      !$acc parallel loop collapse(2)
+                      do ipoin = 1,npoin
+                         do idime = 1,ndime
                             R(ipoin,idime) = R(ipoin,idime)/Ml(ipoin)
                          end do
-                         !$acc end parallel loop
                       end do
+                      !$acc end  parallel loop
 
               end subroutine lumped_solver_vect
 
@@ -58,9 +58,11 @@ module mod_solver
                       !
                       call nvtxStartRange("Scalar APINV")
 
-                      Ar = Mc
+                      !$acc kernels
+                      Ar(:) = Mc(:)
+                      !$acc end kernels
 
-                      !$acc parallel loop gang
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          rowb = rdom(ipoin)+1
                          rowe = rdom(ipoin+1)
@@ -79,19 +81,25 @@ module mod_solver
                       !
                       ! Initialize series at k=0
                       !
-                      b = R
-                      v = b
-                      x = b
+                      !$acc kernels
+                      b(:) = R(:)
+                      v(:) = b(:)
+                      x(:) = b(:)
+                      !$acc end kernels
 
                       !
                       ! Step over sucessive powers
                       !
                       do ipow = 1,ppow
                          call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
-                         v = b
-                         x = x+v
+                         !$acc kernels
+                         v(:) = b(:)
+                         x(:) = x(:)+v(:)
+                         !$acc end kernels
                       end do
-                      R = x
+                      !$acc kernels
+                      R(:) = x(:)
+                      !$acc end kernels
                       call nvtxEndRange
 
               end subroutine approx_inverse_scalar
@@ -112,8 +120,12 @@ module mod_solver
                       ! Compute Ar
                       !
                       call nvtxStartRange("Vector APINV")
-                      Ar = Mc
-                      !$acc parallel loop gang
+
+                      !$acc kernels
+                      Ar(:) = Mc(:)
+                      !$acc end kernels
+                      !
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          rowb = rdom(ipoin)+1
                          rowe = rdom(ipoin+1)
@@ -133,19 +145,25 @@ module mod_solver
                          !
                          ! Initialize series at k=0
                          !
-                         b = R(:,idime)
-                         v = b
-                         x = b
+                         !$acc kernels
+                         b(:) = R(:,idime)
+                         v(:) = b(:)
+                         x(:) = b(:)
+                         !$acc end kernels
 
                          !
                          ! Step over sucessive powers
                          !
                          do ipow = 1,ppow
                             call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
-                            v = b
-                            x = x+v
+                            !$acc kernels
+                            v(:) = b(:)
+                            x(:) = x(:)+v(:)
+                            !$acc end kernels
                          end do
-                         R(:,idime) = x
+                         !$acc kernels
+                         R(:,idime) = x(:)
+                         !$acc end kernels
                       end do
                       call nvtxEndRange
 
@@ -162,8 +180,11 @@ module mod_solver
                       integer(4)              :: ipoin, izdom, jpoin, rowb, rowe
 
                       call nvtxStartRange("SPMV")
-                      u = 0.0d0
-                      !$acc parallel loop gang
+                      !$acc kernels
+                      u(:) = 0.0d0
+                      !$acc end kernels
+                      !
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          !
                          ! Get CSR section for row ipoin
