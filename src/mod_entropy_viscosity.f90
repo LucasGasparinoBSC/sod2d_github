@@ -39,67 +39,50 @@ module mod_entropy_viscosity
                        eta = (rhok/(gamma_gas-1.0d0))*(prk/(rhok**gamma_gas))
                        eta_p = (rho(:,1)/(gamma_gas-1.0d0))*(pr(:,1)/(rho(:,1)**gamma_gas))
                        alpha = eta/rhok
-                       !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mcw,alpha)
                        do idime = 1,ndime
                           f_eta(:,idime) = uk(:,idime)*eta(:)
                           f_rho(:,idime) = qk(:,idime)
                        end do
-                       !do ipoin = 1,npoin
 
-                          !
-                          ! Current (substesp values)
-                          !
-                          !eta(ipoin) = (rhok(ipoin)/(gamma_gas-1.0d0))*log(prk(ipoin)/(rhok(ipoin)**gamma_gas))
-                          !f_eta(ipoin,1:ndime) = uk(ipoin,1:ndime)*eta(ipoin)
-                          !alpha(ipoin) = eta(ipoin)/rhok(ipoin)
-                          !f_rho(ipoin,1:ndime) = qk(ipoin,1:ndime)
-
-                          !
-                          ! Prediction
-                          !
-                          !eta_p(ipoin) = (rho(ipoin,1)/(gamma_gas-1.0d0))*log(pr(ipoin,1)/(rho(ipoin,1)**gamma_gas))
-                          !alpha_p(ipoin) = eta_p(ipoin)/rho(ipoin,1)
-
-                          !
-                          ! Temporal term
-                          !
-                          !R1(ipoin) = (eta_p(ipoin)-eta(ipoin))/dt  ! Temporal entropy
-                          !R2(ipoin) = (rho(ipoin,1)-rhok(ipoin))/dt ! Temporal mass
-                       !end do
+                       !
+                       ! Temporal eta
+                       !
                        R1 = (eta_p-eta)/dt  ! Temporal entropy
-                       R2 = (rho(:,1)-rhok)/dt ! Temporal mass
+                       !
+                       ! Entropy residual
+                       !
+                       Reta = 0.0d0
+                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_eta,Reta)
+                       !
+                       ! Alter Reta with inv(Mc)
+                       !
+                       call lumped_solver_scal(npoin,Ml,Reta)
+                       call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
+                       !
+                       ! Update Reta
+                       !
+                       Reta = Reta+1.0d0*R1
+
+                       !
+                       ! Temporal mass
+                       !
+                       R2 = (rho(:,1)-rhok)/dt
                        !
                        ! Alter R2 with Mcw
                        !
                        call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,R2,aux1,alpha)
-                       R2 = aux1
-                       call nvtxEndRange
-
                        !
-                       ! Alter R1 and R2 with Mc
+                       ! Compute weighted mass convec
                        !
-                       call nvtxStartRange("Modify RHS")
-                       aux1 = R1
-                       call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mc,aux1,R1)
-                       !aux1 = R2
-                       !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Mcw,aux1,R2)
-                       call nvtxEndRange
-
+                       Rrho = 0.0d0
+                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho,alpha)
                        !
-                       ! Compute both residuals
+                       ! Update Rrho with both terms
                        !
-                       call nvtxStartRange("Residual 1")
-                       Reta = 0.0d0 ! Entropy residual
-                       Rrho = 0.0d0 ! Mass residual
-                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_eta,Reta) ! Entropy convec
-                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho,alpha) ! Mass convec
-                       call nvtxEndRange
-
-                       call nvtxStartRange("Residual 2")
-                       Reta = Reta+1.0d0*R1
-                       call lumped_solver_scal(npoin,Ml,Reta)
-                       call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
-                       Rrho = Rrho+1.0d0*R2
+                       Rrho = Rrho+1.0d0*aux1
+                       !
+                       ! Apply solver
+                       !
                        call lumped_solver_scal(npoin,Ml,Rrho)
                        call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rrho)
                        call nvtxEndRange
