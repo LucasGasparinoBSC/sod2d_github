@@ -36,12 +36,16 @@ module mod_entropy_viscosity
                        ! Entropy function and temporal terms
                        !
                        call nvtxStartRange("Entropy transport")
-                       eta = (rhok/(gamma_gas-1.0d0))*(prk/(rhok**gamma_gas))
-                       eta_p = (rho(:,1)/(gamma_gas-1.0d0))*(pr(:,1)/(rho(:,1)**gamma_gas))
+                       !$acc kernels
+                       eta = (rhok(:)/(gamma_gas-1.0d0))*log(prk(:)/(rhok(:)**gamma_gas))
+                       eta_p = (rho(:,1)/(gamma_gas-1.0d0))*log(pr(:,1)/(rho(:,1)**gamma_gas))
+                       !$acc end kernels
                        alpha = eta/rhok
                        do idime = 1,ndime
+                          !$acc kernels
                           f_eta(:,idime) = uk(:,idime)*eta(:)
                           f_rho(:,idime) = qk(:,idime)
+                          !$acc end kernels
                        end do
 
                        !
