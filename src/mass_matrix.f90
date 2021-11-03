@@ -151,4 +151,60 @@ module mass_matrix
 
               end subroutine lumped_mass
 
+              subroutine cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,Rmc,weight)
+
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      ! Forms Mc as a sparse CSR matrix, utilizing nzdom, rdom and cdom to          !
+                      ! compress the elemental matrices into the full sparse assembly structure.    !
+                      ! Mc is defined by A{int(Na*Nb*det(Je))}, where A{} is the assembly operator. !
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                      implicit none
+
+                      integer(4), intent(in)           :: nelem, nnode, npoin, ngaus
+                      integer(4), intent(in)           :: connec(nelem,nnode)
+                      real(8),    intent(in)           :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode), v(npoin)
+                      real(8),    intent(in), optional :: weight(npoin)
+                      real(8),    intent(out)          :: Rmc(npoin)
+                      integer(4)                       :: ielem, igaus, inode, ind(nnode)
+                      real(8)                          :: Re(nnode), el_w(nnode), tmp1, tmp2
+
+                      !
+                      ! Initialize Mc to zeros
+                      !
+                      call nvtxStartRange("Cmass times vector")
+                      Rmc = 0.0d0
+
+                      !
+                      ! Loop over all elements to form Mc_e(nnode,nnode)
+                      !
+                      do ielem = 1,nelem
+                         ind(1:nnode) = connec(ielem,1:nnode) ! get elemental indices
+                         if(present(weight))then
+                            el_w(1:nnode) = weight(ind)
+                         else
+                            el_w(:) = 1.0d0
+                         end if
+
+                         !
+                         ! Form Re with Gaussian quadrature (open)
+                         !
+                         Re = 0.0d0
+                         do igaus = 1,ngaus ! Loop over Gauss points
+                            tmp1 = dot_product(Ngp(igaus,:),el_w(:))
+                            tmp2 = dot_product(Ngp(igaus,:),v(ind))
+                            do inode = 1,nnode ! Loop over element nodes (row)
+                               Re(inode) = Re(inode) + &
+                                  gpvol(1,igaus,ielem)*(tmp1)* &
+                                  Ngp(igaus,inode)*tmp2
+                            end do
+                         end do
+                         do inode = 1,nnode
+                            Rmc(ind(inode)) = Rmc(ind(inode))+Re(inode)
+                         end do
+                      end do
+                      call nvtxEndRange
+
+              end subroutine cmass_times_vector
+
 end module mass_matrix
