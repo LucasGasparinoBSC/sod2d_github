@@ -6,8 +6,8 @@ module mod_entropy_viscosity
 
       contains
 
-              subroutine residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
-                                   rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+              subroutine residuals(nelem,ngaus,npoin,nnode,ndime, &
+                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
                                    dt, rhok, uk, prk, qk, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -18,10 +18,10 @@ module mod_entropy_viscosity
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime, nzdom, ppow
-                      integer(4), intent(in)  :: connec(nelem,nnode), rdom(npoin+1), cdom(nzdom)
+                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime, ppow
+                      integer(4), intent(in)  :: connec(nelem,nnode)
                       real(8),    intent(in)  :: Ngp(nnode,ngaus), gpcar(ndime,nnode,ngaus,nelem)
-                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ml(npoin), Mc(nzdom)
+                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ml(npoin)
                       real(8),    intent(in)  :: dt, gamma_gas
                       real(8),    intent(in)  :: rhok(npoin), uk(npoin,ndime), prk(npoin), qk(npoin,ndime)     ! From substep
                       real(8),    intent(in)  :: rho(npoin,2), u(npoin,ndime,2), pr(npoin,2), q(npoin,ndime,2) ! From prediction
@@ -30,7 +30,6 @@ module mod_entropy_viscosity
                       real(8)                 :: eta(npoin), eta_p(npoin), alpha(npoin), alpha_p(npoin)
                       real(8)                 :: f_eta(npoin,ndime), f_rho(npoin,ndime), R1(npoin), R2(npoin)
                       real(8)                 :: aux1(npoin)
-                      real(8)                 :: Mcw(nzdom), Mcwp(nzdom)
 
                        !
                        ! Entropy function and temporal terms
@@ -110,8 +109,10 @@ module mod_entropy_viscosity
                       real(8),    intent(out) :: mu_e(nelem)
                       integer(4)              :: ielem, ind(nnode), inode
                       real(8)                 :: R1, R2, Ve, ue(nnode,ndime), rhoe(nnode), pre(nnode)
-                      real(8)                 :: uabs, c_sound, L3(nnode), betae
+                      real(8)                 :: uabs, c_sound, betae
+                      real(8)                 :: L3
 
+                      !$acc parallel loop gang private(ind)
                       do ielem = 1,nelem
                          !
                          ! Initialize arrays
@@ -121,24 +122,26 @@ module mod_entropy_viscosity
                          R2 = maxval(abs(Rrho(ind)))       ! Linf norm of Rrho on element
                          !Ve = max(R1,R2)*(helem(ielem)**2) ! Normalized residual for element
                          Ve = R1*(helem(ielem)**2) ! Normalized residual for element
-                         ue = u(ind,:)                     ! Element velocities
-                         rhoe = rho(ind)                   ! Element density
-                         pre = pr(ind)                     ! Element pressure
+                         !ue = u(ind,:)                     ! Element velocities
+                         !rhoe = rho(ind)                   ! Element density
+                         !pre = pr(ind)                     ! Element pressure
                          !
                          ! Max. Wavespeed at element
                          !
+                         !$acc loop vector reduction(max:L3)
                          do inode = 1,nnode
-                            uabs = sqrt(dot_product(ue(inode,:),ue(inode,:))) ! Velocity mag. at element node
-                            c_sound = sqrt(gamma_gas*pre(inode)/rhoe(inode))     ! Speed of sound at node
-                            L3(inode) = uabs+c_sound                          ! L3 wavespeed
+                            uabs = sqrt(dot_product(u(ind(inode),:),u(ind(inode),:))) ! Velocity mag. at element node
+                            c_sound = sqrt(gamma_gas*pr(ind(inode))/rho(ind(inode)))     ! Speed of sound at node
+                            L3 = abs(uabs+c_sound)                          ! L3 wavespeed
                          end do
                          !
                          ! Select against Upwind viscosity
                          !
-                         betae = 0.5d0*helem(ielem)*maxval(abs(L3))
-                         mu_e(ielem) = maxval(abs(rhoe))*min(Ve,betae) ! Dynamic viscosity
+                         betae = 0.5d0*helem(ielem)*L3
+                         mu_e(ielem) = maxval(abs(rho(ind)))*min(Ve,betae) ! Dynamic viscosity
                          !mu_e(ielem) = betae
                       end do
+                      !$acc end parallel loop
 
               end subroutine smart_visc
 

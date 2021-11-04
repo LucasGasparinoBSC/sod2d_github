@@ -19,7 +19,7 @@ program sod2d
         use mesh_reader
         use inicond_reader
         use mass_matrix
-        use mod_graph
+        !use mod_graph
         use mod_geom
         use mod_output
 
@@ -27,14 +27,14 @@ program sod2d
 
         implicit none
 
-        integer(4)                 :: ndime, nnode, ngaus, nstep, nzdom
-        integer(4)                 :: idime, inode, igaus, istep, izdom
+        integer(4)                 :: ndime, nnode, ngaus, nstep!, nzdom
+        integer(4)                 :: idime, inode, igaus, istep!, izdom
         integer(4)                 :: nelem, npoin, nboun, npbou, nbcodes
         integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
         integer(4)                 :: ppow, porder
         integer(4)                 :: flag_predic
-        integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
+        !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
         integer(4), allocatable    :: aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
@@ -44,7 +44,7 @@ program sod2d
         !real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
         real(8),    allocatable    :: dxN(:,:), gpcar(:,:,:,:), gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
-        real(8),    allocatable    :: Mc(:), Ml(:)
+        real(8),    allocatable    :: Ml(:)!, Mc(:)
         real(8),    allocatable    :: mu_e(:)
         real(8)                    :: s, t, z, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
@@ -72,7 +72,7 @@ program sod2d
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
+        dt = 0.0025d0/4.0d0 ! TODO: make it adaptive...
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -105,16 +105,16 @@ program sod2d
         ! Create mesh graph for CSR matrices                                  !
         !*********************************************************************!
 
-        write(*,*) "--| PERFORMING GRAPH OPERATIONS..."
-        allocate(rdom(npoin+1))                                          ! Implicit row indexing
-        allocate(aux_cdom(nelem*nnode*nnode))                            ! Preliminary cdom for subroutine
-        call compute_nzdom(npoin,nnode,nelem,connec,nzdom,rdom,aux_cdom) ! Computes nzdom, rdom and aux_cdom
-        allocate(cdom(nzdom))                                            ! Row indexes with proper array size
-        do izdom = 1,nzdom
-           cdom(izdom) = aux_cdom(izdom)
-        end do
-        deallocate(aux_cdom)
-        write(*,*) "--| END OF GRAPH OPERATIONS!"
+        !!write(*,*) "--| PERFORMING GRAPH OPERATIONS..."
+        !!allocate(rdom(npoin+1))                                          ! Implicit row indexing
+        !!allocate(aux_cdom(nelem*nnode*nnode))                            ! Preliminary cdom for subroutine
+        !!call compute_nzdom(npoin,nnode,nelem,connec,nzdom,rdom,aux_cdom) ! Computes nzdom, rdom and aux_cdom
+        !!allocate(cdom(nzdom))                                            ! Row indexes with proper array size
+        !!do izdom = 1,nzdom
+        !!   cdom(izdom) = aux_cdom(izdom)
+        !!end do
+        !!deallocate(aux_cdom)
+        !!write(*,*) "--| END OF GRAPH OPERATIONS!"
 
         !*********************************************************************!
         ! Generate list of "free" nodes                                       !
@@ -380,9 +380,9 @@ program sod2d
         call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         solver_type = 'LUMSO'
 
-        write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
-        allocate(Mc(nzdom))
-        call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
+        !write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
+        !allocate(Mc(nzdom))
+        !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
         !read(*,*) solver_type
@@ -433,10 +433,10 @@ program sod2d
         ! Mass matrices
 
         allocate(Ml_d(npoin))
-        allocate(Mc_d(nzdom))
+        !allocate(Mc_d(nzdom))
 
         Ml_d = Ml
-        Mc_d = Mc
+        !Mc_d = Mc
 
         ! Elemental info
 
@@ -446,7 +446,7 @@ program sod2d
 
         Ngp_d = Ngp
         gpvol_d = gpvol
-        gpcar_d = gpcar_d
+        gpcar_d = gpcar
 
         ! End nvtx range
         call nvtxEndRange
@@ -483,8 +483,8 @@ program sod2d
            call nvtxStartRange("RK4 step "//timeStep,istep)
 
            call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
-                     Ngp,gpcar,Ml,Mc,gpvol,dt,helem,Rgas,gamma_gas, &
+                     ppow,ldof,lbnodes,connec,bound,bou_codes, &
+                     Ngp,gpcar,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                      rho,u,q,pr,E,Tem,e_int,mu_e)
 
            !
@@ -492,8 +492,8 @@ program sod2d
            !
            flag_predic = 0
            call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow, nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
-                     Ngp,gpcar,Ml,Mc,gpvol,dt,helem,Rgas,gamma_gas, &
+                     ppow,ldof,lbnodes,connec,bound,bou_codes, &
+                     Ngp,gpcar,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                      rho,u,q,pr,E,Tem,e_int,mu_e)
            call nvtxEndRange
 

@@ -9,8 +9,8 @@ module time_integ
       contains
 
               subroutine rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                              ppow,nzdom,rdom,cdom,ldof,lbnodes,connec,bound,bou_codes, &
-                              Ngp,gpcar,Ml,Mc,gpvol,dt,helem,Rgas,gamma_gas, &
+                              ppow,ldof,lbnodes,connec,bound,bou_codes, &
+                              Ngp,gpcar,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                               rho,u,q,pr,E,Tem,e_int,mu_e)
 
                       implicit none
@@ -19,12 +19,11 @@ module time_integ
                       integer(4), intent(in)             :: nelem, nboun, npbou, npoin, ndime, ngaus, nnode, ndof, nbnodes
                       integer(4), intent(in)             :: ldof(ndof), lbnodes(nbnodes), connec(nelem,nnode)
                       integer(4), intent(in)             :: bound(nboun,npbou), bou_codes(nboun,2)
-                      integer(4), intent(in)             :: nzdom, rdom(npoin+1), cdom(nzdom), ppow
+                      integer(4), intent(in)             :: ppow
                       real(8),    intent(in)             :: Ngp(ngaus,nnode), gpcar(ndime,nnode,ngaus,nelem)
                       real(8),    intent(in)             :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)             :: dt, helem(nelem)
                       real(8),    intent(in)             :: Ml(npoin)
-                      real(8),    intent(in)             :: Mc(nzdom)
                       real(8),    intent(in)             :: Rgas, gamma_gas
                       real(8),    intent(inout)          :: rho(npoin,2)
                       real(8),    intent(inout)          :: u(npoin,ndime,2)
@@ -65,13 +64,15 @@ module time_integ
 
                       if (flag_predic == 0) write(*,*) '         SOD2D(1)'
 
-                      rho_1 = 0.0d0
-                      u_1 = 0.0d0
-                      q_1 = 0.0d0
-                      pr_1 = 0.0d0
-                      E_1 = 0.0d0
-                      Tem_1 = 0.0d0
-                      e_int_1 = 0.0d0
+                      !$acc kernels
+                      rho_1(:) = 0.0d0
+                      u_1(:,:) = 0.0d0
+                      q_1(:,:) = 0.0d0
+                      pr_1(:) = 0.0d0
+                      E_1(:) = 0.0d0
+                      Tem_1(:) = 0.0d0
+                      e_int_1(:) = 0.0d0
+                      !$acc end kernels
 
                       !
                       ! Entropy viscosity update
@@ -82,8 +83,8 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
-                                   rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
                                    dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -103,12 +104,16 @@ module time_integ
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q(:,:,pos),Rmass_1)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),mu_e,Rdiff_scal)
-                         Rmass_1 = Rmass_1 + Rdiff_scal
+                         !$acc kernels
+                         Rmass_1(:) = Rmass_1(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
+                      !$acc kernels
                       rho_1(:) = rho(:,pos)-(dt/2.0d0)*Rmass_1(:)
+                      !$acc end kernels
 
                       !
                       ! Momentum
@@ -116,18 +121,24 @@ module time_integ
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),q(:,:,pos),pr(:,pos),Rmom_1)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),mu_e,Rdiff_vect)
-                         Rmom_1 = Rmom_1 + Rdiff_vect
+                         !$acc kernels
+                         Rmom_1(:,:) = Rmom_1(:,:) + Rdiff_vect(:,:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
+                      !$acc kernels
                       q_1(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_1(:,:)
+                      !$acc end kernels
 
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
                       if (ndime == 2) then
+                         !$acc kernels
                          q_1(lbnodes,2) = 0.0d0
+                         !$acc end kernels
                       else if (ndime == 3) then
                          !
                          ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
@@ -137,16 +148,24 @@ module time_integ
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
+                               !$acc kernels
                                q_1(bound(iboun,:),2) = 0.0d0
+                               !$acc end kernels
                             else if (bcode == 2) then
+                               !$acc kernels
                                q_1(bound(iboun,:),3) = 0.0d0
+                               !$acc end kernels
                             end if
                          end do
                       end if
 
+                      !$acc parallel loop collapse(2)
                       do ipoin = 1,npoin
-                         u_1(ipoin,:) = q_1(ipoin,:)/rho_1(ipoin)
+                         do idime = 1,ndime
+                            u_1(ipoin,idime) = q_1(ipoin,idime)/rho_1(ipoin)
+                         end do
                       end do
+                      !$acc end parallel loop
 
                       !
                       ! Total energy
@@ -154,18 +173,26 @@ module time_integ
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),pr(:,pos),E(:,pos),Rener_1)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Tem(:,pos),mu_e,Rdiff_scal)
-                         Rener_1 = Rener_1 + Rdiff_scal
+                         !$acc kernels
+                         Rener_1(:) = Rener_1(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_1)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_1)
+                      !$acc kernels
                       E_1(:) = E(:,pos)-(dt/2.0d0)*Rener_1(:)
+                      !$acc end kernels
 
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          e_int_1(ipoin) = (E_1(ipoin)/rho_1(ipoin))-0.5d0*dot_product(u_1(ipoin,:),u_1(ipoin,:))
                       end do
-                      pr_1 = rho_1*(gamma_gas-1.0d0)*e_int_1
-                      Tem_1 = pr_1/(rho_1*Rgas)
+                      !$acc end parallel loop
+                      !$acc kernels
+                      pr_1(:) = rho_1(:)*(gamma_gas-1.0d0)*e_int_1(:)
+                      Tem_1(:) = pr_1(:)/(rho_1(:)*Rgas)
+                      !$acc end kernels
 
                       !
                       ! Sub Step 2
@@ -173,13 +200,15 @@ module time_integ
 
                       if (flag_predic == 0) write(*,*) '         SOD2D(2)'
 
-                      rho_2 = 0.0d0
-                      u_2 = 0.0d0
-                      q_2 = 0.0d0
-                      pr_2 = 0.0d0
-                      E_2 = 0.0d0
-                      Tem_2 = 0.0d0
-                      e_int_2 = 0.0d0
+                      !$acc kernels
+                      rho_2(:) = 0.0d0
+                      u_2(:,:) = 0.0d0
+                      q_2(:,:) = 0.0d0
+                      pr_2(:) = 0.0d0
+                      E_2(:) = 0.0d0
+                      Tem_2(:) = 0.0d0
+                      e_int_2(:) = 0.0d0
+                      !$acc end kernels
 
                       !
                       ! Entropy viscosity update
@@ -190,8 +219,8 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
-                                   rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
                                    dt, rho_1, u_1, pr_1, q_1, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -289,8 +318,8 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
-                                   rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
                                    dt, rho_2, u_2, pr_2, q_2, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -388,8 +417,8 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, nzdom, &
-                                   rdom, cdom, ppow, connec, Ngp, gpcar, gpvol, Ml, Mc, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
                                    dt, rho_3, u_3, pr_3, q_3, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
