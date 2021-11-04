@@ -106,7 +106,8 @@ module time_integ
                          Rmass_1 = Rmass_1 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_1)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
                       rho_1(:) = rho(:,pos)-(dt/2.0d0)*Rmass_1(:)
 
                       !
@@ -155,7 +156,8 @@ module time_integ
                          Rener_1 = Rener_1 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_1)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_1)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_1)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_1)
                       E_1(:) = E(:,pos)-(dt/2.0d0)*Rener_1(:)
 
                       do ipoin = 1,npoin
@@ -208,7 +210,8 @@ module time_integ
                          Rmass_2 = Rmass_2 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_2)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_2)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_2)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_2)
                       rho_2(:) = rho(:,pos)-(dt/2.0d0)*Rmass_2(:)
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,q_1,pr_1,Rmom_2)
@@ -251,7 +254,8 @@ module time_integ
                          Rener_2 = Rener_2 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_2)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_2)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_2)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_2)
                       E_2(:) = E(:,pos)-(dt/2.0d0)*Rener_2(:)
 
                       do ipoin = 1,npoin
@@ -304,7 +308,8 @@ module time_integ
                          Rmass_3 = Rmass_3 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_3)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_3)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_3)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_3)
                       rho_3(:) = rho(:,pos)-(dt/1.0d0)*Rmass_3(:)
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,q_2,pr_2,Rmom_3)
@@ -347,7 +352,8 @@ module time_integ
                          Rener_3 = Rener_3 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_3)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_3)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_3)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_3)
                       E_3(:) = E(:,pos)-(dt/1.0d0)*Rener_3(:)
 
                       do ipoin = 1,npoin
@@ -400,7 +406,8 @@ module time_integ
                          Rmass_4 = Rmass_4 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_4)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_4)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_4)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_4)
                       aux_mass = Rmass_1+2.0d0*Rmass_2+2.0d0*Rmass_3+Rmass_4
                       rho_4(:) = rho(:,pos)-(dt/6.0d0)*aux_mass(:)
 
@@ -444,7 +451,8 @@ module time_integ
                          Rener_4 = Rener_4 + Rdiff_scal
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_4)
-                      call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_4)
+                      !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_4)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_4)
                       aux_ener = Rener_1+2.0d0*Rener_2+2.0d0*Rener_3+Rener_4
                       E_4(:) = E(:,pos)-(dt/6.0d0)*aux_ener
 
