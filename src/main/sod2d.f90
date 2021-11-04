@@ -7,9 +7,9 @@ program sod2d
 
         use mod_nvtx
 #ifdef GPU
-        use cudafor
         use mod_gpu_vars
 #endif
+        use cudafor
 
         use omp_lib
         use elem_qua
@@ -41,7 +41,7 @@ program sod2d
         real(8),    allocatable    :: xgp(:,:), wgp(:)
         real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
         real(8),    allocatable    :: Je(:,:), He(:,:)
-        real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
+        !real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
         real(8),    allocatable    :: dxN(:,:), gpcar(:,:,:,:), gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
         real(8),    allocatable    :: Mc(:), Ml(:)
@@ -334,16 +334,18 @@ program sod2d
 
         write(*,*) "--| GENERATING JACOBIAN RELATED INFORMATION..."
 
+        call nvtxStartRange("Jacobian info")
         allocate(elcod(ndime,nnode))
         allocate(Je(ndime,ndime))
         allocate(He(ndime,ndime))
-        allocate(struc_J(ndime,ndime,ngaus,nelem))
-        allocate(struc_H(ndime,ndime,ngaus,nelem))
-        allocate(struc_detJ(1,ngaus,nelem))
+        !allocate(struc_J(ndime,ndime,ngaus,nelem))
+        !allocate(struc_H(ndime,ndime,ngaus,nelem))
+        !allocate(struc_detJ(1,ngaus,nelem))
         allocate(gpvol(1,ngaus,nelem))
         allocate(dxN(ndime,nnode))
         allocate(gpcar(ndime,nnode,ngaus,nelem))
 
+        !$acc parallel loop gang private(elcod)
         do ielem = 1,nelem
            if (ndime == 2) then
               elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
@@ -353,17 +355,21 @@ program sod2d
               elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
               elcod(3,1:nnode) = coord(connec(ielem,1:nnode),3)
            end if
+           !$acc loop vector private(Je,He,dN,dxN)
            do igaus = 1,ngaus
               dN = dNgp(:,:,igaus)
               call elem_jacobian(ndime,nnode,elcod,dN,Je,detJe,He)
-              struc_J(:,:,igaus,ielem) = Je
-              struc_detJ(1,igaus,ielem) = detJe
-              struc_H(:,:,igaus,ielem) = He
+              !struc_J(:,:,igaus,ielem) = Je
+              !struc_detJ(1,igaus,ielem) = detJe
+              !struc_H(:,:,igaus,ielem) = He
               call cartesian_deriv(ndime,nnode,dN,He,dxN)
               gpcar(:,:,igaus,ielem) = dxN(:,:)
               gpvol(1,igaus,ielem) = wgp(igaus)*detJe
            end do
         end do
+        !$acc end parallel loop
+        !deallocate(elcod,dxN,dNgp,dN,Je,He)
+        call  nvtxEndRange
 
         !*********************************************************************!
         ! Compute mass matrix (Lumped and Consistent) and set solver type     !

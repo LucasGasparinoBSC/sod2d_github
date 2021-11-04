@@ -116,42 +116,52 @@ module mod_solver
 
               end subroutine approx_inverse_scalar
 
-              subroutine approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
+              !subroutine approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
+              subroutine approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,R)
+
+                      use mass_matrix
 
                       implicit none
 
-                      integer(4), intent(in)       :: ndime, npoin, nzdom, ppow
-                      integer(4), intent(in)       :: rdom(npoin+1), cdom(nzdom)
-                      real(8),    intent(in)       :: Ml(npoin), Mc(nzdom)
+                      !integer(4), intent(in)       :: ndime, npoin, nzdom, ppow
+                      !integer(4), intent(in)       :: rdom(npoin+1), cdom(nzdom)
+                      !real(8),    intent(in)       :: Ml(npoin), Mc(nzdom)
+                      !real(8),    intent(inout)    :: R(npoin,ndime)
+                      !integer(4)                   :: idime, ipoin, jpoin, ipow, izdom, rowb, rowe
+                      !real(8),    dimension(npoin) :: b, v, x
+                      !real(8)                      :: Ar(nzdom)
+
+                      integer(4), intent(in)       :: ndime,nelem,nnode,npoin,ngaus,ppow
+                      integer(4), intent(in)       :: connec(nelem,nnode)
+                      real(8),    intent(in)       :: gpvol(1,ngaus,nelem),Ngp(ngaus,nnode),Ml(npoin)
                       real(8),    intent(inout)    :: R(npoin,ndime)
-                      integer(4)                   :: idime, ipoin, jpoin, ipow, izdom, rowb, rowe
+                      integer(4)                   :: ipoin, idime, ipow
                       real(8),    dimension(npoin) :: b, v, x
-                      real(8)                      :: Ar(nzdom)
 
                       !
                       ! Compute Ar
                       !
                       call nvtxStartRange("Vector APINV")
 
-                      !$acc kernels
-                      Ar(:) = Mc(:)
-                      !$acc end kernels
-                      !
-                      !$acc parallel loop
-                      do ipoin = 1,npoin
-                         rowb = rdom(ipoin)+1
-                         rowe = rdom(ipoin+1)
-                         !$acc loop seq
-                         do izdom = rowb,rowe
-                            if(cdom(izdom) == ipoin) then
-                               Ar(izdom) = Ml(ipoin)-Ar(izdom)
-                            else
-                               Ar(izdom) = -Ar(izdom)
-                            end if
-                            Ar(izdom) = Ar(izdom)/Ml(ipoin)
-                         end do
-                      end do
-                      !$acc end parallel loop
+                      !!!$acc kernels
+                      !!Ar(:) = Mc(:)
+                      !!!$acc end kernels
+                      !!!
+                      !!!$acc parallel loop
+                      !!do ipoin = 1,npoin
+                      !!   rowb = rdom(ipoin)+1
+                      !!   rowe = rdom(ipoin+1)
+                      !!   !$acc loop seq
+                      !!   do izdom = rowb,rowe
+                      !!      if(cdom(izdom) == ipoin) then
+                      !!         Ar(izdom) = Ml(ipoin)-Ar(izdom)
+                      !!      else
+                      !!         Ar(izdom) = -Ar(izdom)
+                      !!      end if
+                      !!      Ar(izdom) = Ar(izdom)/Ml(ipoin)
+                      !!   end do
+                      !!end do
+                      !!!$acc end parallel loop
 
                       do idime = 1,ndime
                          !
@@ -167,9 +177,11 @@ module mod_solver
                          ! Step over sucessive powers
                          !
                          do ipow = 1,ppow
-                            call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
+                            !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
+                            call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
+                            v = v-(b/Ml)
                             !$acc kernels
-                            v(:) = b(:)
+                            !v(:) = b(:)
                             x(:) = x(:)+v(:)
                             !$acc end kernels
                          end do

@@ -119,7 +119,8 @@ module time_integ
                          Rmom_1 = Rmom_1 + Rdiff_vect
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
-                      call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
+                      !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
+                      call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
                       q_1(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_1(:,:)
 
                       !
@@ -220,7 +221,8 @@ module time_integ
                          Rmom_2 = Rmom_2 + Rdiff_vect
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_2)
-                      call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_2)
+                      !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_2)
+                      call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_2)
                       q_2(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_2(:,:)
 
                       !
@@ -318,7 +320,8 @@ module time_integ
                          Rmom_3 = Rmom_3 + Rdiff_vect
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_3)
-                      call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_3)
+                      !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_3)
+                      call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_3)
                       q_3(:,:) = q(:,:,pos)-(dt/1.0d0)*Rmom_3(:,:)
 
                       !
@@ -417,7 +420,8 @@ module time_integ
                          Rmom_4 = Rmom_4 + Rdiff_vect
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_4)
-                      call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_4)
+                      !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_4)
+                      call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_4)
                       aux_mom = Rmom_1+2.0d0*Rmom_2+2.0d0*Rmom_3+Rmom_4
                       q_4(:,:) = q(:,:,pos)-(dt/6.0d0)*aux_mom(:,:)
 
