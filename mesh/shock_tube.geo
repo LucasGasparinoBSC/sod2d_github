@@ -31,7 +31,7 @@ Recombine Surface {1, 2};
 
 Extrude {0, 0, 2} {
   Surface{1}; Surface{2};
-  Layers{32};
+  Layers{16};
   Recombine;
 }
 
