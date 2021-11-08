@@ -103,7 +103,9 @@ module mod_solver
                       do ipow = 1,ppow
                          !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                          call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
-                         v = v-(b/Ml)
+                         !$acc kernels
+                         v(:) = v(:)-(b(:)/Ml(:))
+                         !$acc end kernels
                          !$acc kernels
                          !v(:) = b(:)
                          x(:) = x(:)+v(:)
@@ -179,7 +181,9 @@ module mod_solver
                          do ipow = 1,ppow
                             !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                             call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
-                            v = v-(b/Ml)
+                            !$acc kernels
+                            v(:) = v(:)-(b(:)/Ml(:))
+                            !$acc end kernels
                             !$acc kernels
                             !v(:) = b(:)
                             x(:) = x(:)+v(:)

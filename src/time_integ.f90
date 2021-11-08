@@ -237,28 +237,38 @@ module time_integ
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_1,Rmass_2)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_1,mu_e,Rdiff_scal)
-                         Rmass_2 = Rmass_2 + Rdiff_scal
+                         !$acc kernels
+                         Rmass_2(:) = Rmass_2(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_2)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_2)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_2)
+                      !$acc kernels
                       rho_2(:) = rho(:,pos)-(dt/2.0d0)*Rmass_2(:)
+                      !$acc end kernels
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,q_1,pr_1,Rmom_2)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,mu_e,Rdiff_vect)
-                         Rmom_2 = Rmom_2 + Rdiff_vect
+                         !$acc kernels
+                         Rmom_2(:,:) = Rmom_2(:,:) + Rdiff_vect(:,:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_2)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_2)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_2)
+                      !$acc kernels
                       q_2(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_2(:,:)
+                      !$acc end kernels
 
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
                       if (ndime == 2) then
+                         !$acc kernels
                          q_2(lbnodes,2) = 0.0d0
+                         !$acc end kernels
                       else if (ndime == 3) then
                          !
                          ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
@@ -268,32 +278,48 @@ module time_integ
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
+                               !$acc kernels
                                q_2(bound(iboun,:),2) = 0.0d0
+                               !$acc end kernels
                             else if (bcode == 2) then
+                               !$acc kernels
                                q_2(bound(iboun,:),3) = 0.0d0
+                               !$acc end kernels
                             end if
                          end do
                       end if
 
+                      !$acc parallel loop collapse(2)
                       do ipoin = 1,npoin
-                         u_2(ipoin,:) = q_2(ipoin,:)/rho_2(ipoin)
+                         do idime = 1,ndime
+                            u_2(ipoin,idime) = q_2(ipoin,idime)/rho_2(ipoin)
+                         end do
                       end do
+                      !$acc end parallel loop
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,pr_1,E_1,Rener_2)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,Tem_1,mu_e,Rdiff_scal)
-                         Rener_2 = Rener_2 + Rdiff_scal
+                         !$acc kernels
+                         Rener_2(:) = Rener_2(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_2)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_2)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_2)
+                      !$acc kernels
                       E_2(:) = E(:,pos)-(dt/2.0d0)*Rener_2(:)
+                      !$acc end kernels
 
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          e_int_2(ipoin) = (E_2(ipoin)/rho_2(ipoin))-0.5d0*dot_product(u_2(ipoin,:),u_2(ipoin,:))
                       end do
-                      pr_2 = rho_2*(gamma_gas-1.0d0)*e_int_2
-                      Tem_2 = pr_2/(rho_2*Rgas)
+                      !$acc end parallel loop
+                      !$acc kernels
+                      pr_2(:) = rho_2(:)*(gamma_gas-1.0d0)*e_int_2(:)
+                      Tem_2(:) = pr_2(:)/(rho_2(:)*Rgas)
+                      !$acc end kernels
 
                       !
                       ! Sub Step 3
@@ -301,13 +327,15 @@ module time_integ
 
                       if (flag_predic == 0) write(*,*) '         SOD2D(3)'
 
-                      rho_3 = 0.0d0
-                      u_3 = 0.0d0
-                      q_3 = 0.0d0
-                      pr_3 = 0.0d0
-                      E_3 = 0.0d0
-                      Tem_3 = 0.0d0
-                      e_int_3 = 0.0d0
+                      !$acc kernels
+                      rho_3(:) = 0.0d0
+                      u_3(:,:) = 0.0d0
+                      q_3(:,:) = 0.0d0
+                      pr_3(:) = 0.0d0
+                      E_3(:) = 0.0d0
+                      Tem_3(:) = 0.0d0
+                      e_int_3(:) = 0.0d0
+                      !$acc end kernels
 
                       !
                       ! Entropy viscosity update
@@ -336,28 +364,38 @@ module time_integ
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_2,Rmass_3)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_2,mu_e,Rdiff_scal)
-                         Rmass_3 = Rmass_3 + Rdiff_scal
+                         !$acc kernels
+                         Rmass_3(:) = Rmass_3(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_3)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_3)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_3)
+                      !$acc kernels
                       rho_3(:) = rho(:,pos)-(dt/1.0d0)*Rmass_3(:)
+                      !$acc end kernels
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,q_2,pr_2,Rmom_3)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,mu_e,Rdiff_vect)
-                         Rmom_3 = Rmom_3 + Rdiff_vect
+                         !$acc kernels
+                         Rmom_3(:,:) = Rmom_3(:,:) + Rdiff_vect(:,:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_3)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_3)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_3)
+                      !$acc kernels
                       q_3(:,:) = q(:,:,pos)-(dt/1.0d0)*Rmom_3(:,:)
+                      !$acc end kernels
 
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
                       if (ndime == 2) then
+                         !$acc kernels
                          q_3(lbnodes,2) = 0.0d0
+                         !$acc end kernels
                       else if (ndime == 3) then
                          !
                          ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
@@ -367,32 +405,48 @@ module time_integ
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
+                               !$acc kernels
                                q_3(bound(iboun,:),2) = 0.0d0
+                               !$acc end kernels
                             else if (bcode == 2) then
+                               !$acc kernels
                                q_3(bound(iboun,:),3) = 0.0d0
+                               !$acc end kernels
                             end if
                          end do
                       end if
 
+                      !$acc parallel loop collapse(2)
                       do ipoin = 1,npoin
-                         u_3(ipoin,:) = q_3(ipoin,:)/rho_3(ipoin)
+                         do idime = 1,ndime
+                            u_3(ipoin,idime) = q_3(ipoin,idime)/rho_3(ipoin)
+                         end do
                       end do
+                      !$acc end parallel loop
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,pr_2,E_2,Rener_3)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,Tem_2,mu_e,Rdiff_scal)
-                         Rener_3 = Rener_3 + Rdiff_scal
+                         !$acc kernels
+                         Rener_3(:) = Rener_3(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_3)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_3)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_3)
+                      !$acc kernels
                       E_3(:) = E(:,pos)-(dt/1.0d0)*Rener_3(:)
+                      !$acc end kernels
 
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          e_int_3(ipoin) = (E_3(ipoin)/rho_3(ipoin))-0.5d0*dot_product(u_3(ipoin,:),u_3(ipoin,:))
                       end do
-                      pr_3 = rho_3*(gamma_gas-1.0d0)*e_int_3
-                      Tem_3 = pr_3/(rho_3*Rgas)
+                      !$acc end parallel loop
+                      !$acc kernels
+                      pr_3(:) = rho_3(:)*(gamma_gas-1.0d0)*e_int_3(:)
+                      Tem_3(:) = pr_3(:)/(rho_3(:)*Rgas)
+                      !$acc end kernels
 
                       !
                       ! Sub Step 4
@@ -400,13 +454,15 @@ module time_integ
 
                       if (flag_predic == 0) write(*,*) '         SOD2D(4)'
 
-                      rho_4 = 0.0d0
-                      u_4 = 0.0d0
-                      q_4 = 0.0d0
-                      pr_4 = 0.0d0
-                      E_4 = 0.0d0
-                      Tem_4 = 0.0d0
-                      e_int_4 = 0.0d0
+                      !$acc kernels
+                      rho_4(:) = 0.0d0
+                      u_4(:,:) = 0.0d0
+                      q_4(:,:) = 0.0d0
+                      pr_4(:) = 0.0d0
+                      E_4(:) = 0.0d0
+                      Tem_4(:) = 0.0d0
+                      e_int_4(:) = 0.0d0
+                      !$acc end kernels
 
                       !
                       ! Entropy viscosity update
@@ -435,30 +491,40 @@ module time_integ
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_3,Rmass_4)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_3,mu_e,Rdiff_scal)
-                         Rmass_4 = Rmass_4 + Rdiff_scal
+                         !$acc kernels
+                         Rmass_4(:) = Rmass_4(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_4)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_4)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_4)
-                      aux_mass = Rmass_1+2.0d0*Rmass_2+2.0d0*Rmass_3+Rmass_4
+                      !$acc kernels
+                      aux_mass(:) = Rmass_1(:)+2.0d0*Rmass_2(:)+2.0d0*Rmass_3(:)+Rmass_4(:)
                       rho_4(:) = rho(:,pos)-(dt/6.0d0)*aux_mass(:)
+                      !$acc end kernels
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,q_3,pr_3,Rmom_4)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,mu_e,Rdiff_vect)
-                         Rmom_4 = Rmom_4 + Rdiff_vect
+                         !$acc kernels
+                         Rmom_4(:,:) = Rmom_4(:,:) + Rdiff_vect(:,:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_4)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_4)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_4)
-                      aux_mom = Rmom_1+2.0d0*Rmom_2+2.0d0*Rmom_3+Rmom_4
+                      !$acc kernels
+                      aux_mom(:,:) = Rmom_1(:,:)+2.0d0*Rmom_2(:,:)+2.0d0*Rmom_3(:,:)+Rmom_4(:,:)
                       q_4(:,:) = q(:,:,pos)-(dt/6.0d0)*aux_mom(:,:)
+                      !$acc end kernels
 
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
                       if (ndime == 2) then
+                         !$acc kernels
                          q_4(lbnodes,2) = 0.0d0
+                         !$acc end kernels
                       else if (ndime == 3) then
                          !
                          ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
@@ -468,38 +534,55 @@ module time_integ
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
+                               !$acc kernels
                                q_4(bound(iboun,:),2) = 0.0d0
+                               !$acc end kernels
                             else if (bcode == 2) then
+                               !$acc kernels
                                q_4(bound(iboun,:),3) = 0.0d0
+                               !$acc end kernels
                             end if
                          end do
                       end if
+                      !$acc parallel loop collapse(2)
                       do ipoin = 1,npoin
-                         u_4(ipoin,:) = q_4(ipoin,:)/rho_4(ipoin)
+                         do idime = 1,ndime
+                            u_4(ipoin,:) = q_4(ipoin,:)/rho_4(ipoin)
+                         end do
                       end do
+                      !$acc end parallel loop
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,pr_3,E_3,Rener_4)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,Tem_3,mu_e,Rdiff_scal)
-                         Rener_4 = Rener_4 + Rdiff_scal
+                         !$acc kernels
+                         Rener_4(:) = Rener_4(:) + Rdiff_scal(:)
+                         !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_4)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_4)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_4)
-                      aux_ener = Rener_1+2.0d0*Rener_2+2.0d0*Rener_3+Rener_4
-                      E_4(:) = E(:,pos)-(dt/6.0d0)*aux_ener
+                      !$acc kernels
+                      aux_ener(:) = Rener_1(:)+2.0d0*Rener_2(:)+2.0d0*Rener_3(:)+Rener_4(:)
+                      E_4(:) = E(:,pos)-(dt/6.0d0)*aux_ener(:)
+                      !$acc end kernels
 
+                      !$acc parallel loop
                       do ipoin = 1,npoin
                          e_int_4(ipoin) = (E_4(ipoin)/rho_4(ipoin))-0.5d0*dot_product(u_4(ipoin,:),u_4(ipoin,:))
                       end do
-                      pr_4 = rho_4*(gamma_gas-1.0d0)*e_int_4
-                      Tem_4 = pr_4/(rho_4*Rgas)
+                      !$acc end parallel loop
+                      !$acc kernels
+                      pr_4(:) = rho_4(:)*(gamma_gas-1.0d0)*e_int_4(:)
+                      Tem_4(:) = pr_4(:)/(rho_4(:)*Rgas)
+                      !$acc end kernels
 
                       !
                       ! Update
                       !
 
                       call nvtxStartRange("Update")
+                      !$acc kernels
                       rho(:,pos) = rho_4
                       u(:,:,pos) = u_4
                       pr(:,pos) = pr_4
@@ -507,6 +590,7 @@ module time_integ
                       q(:,:,pos) = q_4
                       e_int(:,pos) = e_int_4
                       Tem(:,pos) = Tem_4
+                      !$acc end kernels
                       call nvtxEndRange
 
               end subroutine rk_4_main
