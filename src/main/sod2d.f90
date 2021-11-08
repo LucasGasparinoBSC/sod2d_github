@@ -34,6 +34,7 @@ program sod2d
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
         integer(4)                 :: ppow, porder
         integer(4)                 :: flag_predic
+        integer(4)                 :: nsave, nleap
         !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
         integer(4), allocatable    :: aux1(:)
@@ -66,13 +67,15 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! Element order
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 500 ! TODO: Needs to be input...
+        nstep = 10 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0025d0/4.0d0 ! TODO: make it adaptive...
+        dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
+        nsave = 10 ! First step to save
+        nleap = 10 ! Saving interval
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -209,13 +212,17 @@ program sod2d
 
         ! Assuming u, rho, p as IC:
 
+        !$acc parallel loop
         do ipoin = 1,npoin
            e_int(ipoin,2) = pr(ipoin,2)/(rho(ipoin,2)*(gamma_gas-1.0d0))
            Tem(ipoin,2) = pr(ipoin,2)/(rho(ipoin,2)*Rgas)
            E(ipoin,2) = rho(ipoin,2)*(0.5d0*dot_product(u(ipoin,:,2),u(ipoin,:,2))+e_int(ipoin,2))
            q(ipoin,1:ndime,2) = rho(ipoin,2)*u(ipoin,1:ndime,2)
         end do
-        mu_e = 0.0d0
+        !$acc end parallel loop
+        !$acc kernels
+        mu_e(:) = 0.0d0
+        !$acc end kernels
 
         !
         ! Call VTK output
@@ -469,6 +476,7 @@ program sod2d
            !
            flag_predic = 1
            call nvtxStartRange("Init pred "//timeStep,istep)
+           !$acc kernels
            rho(:,1) = rho(:,2)
            u(:,:,1) = u(:,:,2)
            q(:,:,1) = q(:,:,2)
@@ -476,6 +484,7 @@ program sod2d
            E(:,1) = E(:,2)
            Tem(:,1) = Tem(:,2)
            e_int(:,1) = e_int(:,2)
+           !$acc end kernels
            call nvtxEndRange
 
            ! nvtx range for full RK
@@ -495,15 +504,19 @@ program sod2d
                      ppow,ldof,lbnodes,connec,bound,bou_codes, &
                      Ngp,gpcar,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                      rho,u,q,pr,E,Tem,e_int,mu_e)
+
            call nvtxEndRange
 
            !
            ! Call VTK output
            !
-           call nvtxStartRange("Output "//timeStep,istep)
-           call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
-                                rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
-           call nvtxEndRange
+           if (istep == nsave) then
+              call nvtxStartRange("Output "//timeStep,istep)
+              call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
+                                   rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+              nsave = nsave+nleap
+              call nvtxEndRange
+           end if
 
            counter = counter+1
 

@@ -173,7 +173,9 @@ module mass_matrix
                       ! Initialize Mc to zeros
                       !
                       call nvtxStartRange("Cmass times vector")
-                      Rmc = 0.0d0
+                      !$acc kernels
+                      Rmc(:) = 0.0d0
+                      !$acc end kernels
 
                       !
                       ! Loop over all elements to form Mc_e(nnode,nnode)

@@ -34,7 +34,7 @@ module time_integ
                       real(8),    intent(inout)          :: e_int(npoin,2)
                       real(8),    intent(out)            :: mu_e(nelem)
                       integer(4)                         :: pos, bcode
-                      integer(4)                         :: istep, ipoin, idof, idime, iboun
+                      integer(4)                         :: istep, ipoin, idof, idime, iboun, ipbou
                       real(8),    dimension(npoin)       :: rho_1, rho_2, rho_3, rho_4
                       real(8),    dimension(npoin,ndime) :: u_1, u_2, u_3, u_4
                       real(8),    dimension(npoin,ndime) :: q_1, q_2, q_3, q_4
@@ -145,18 +145,22 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
+                         !$acc parallel loop
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
-                               !$acc kernels
-                               q_1(bound(iboun,:),2) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_1(bound(iboun,ipbou),2) = 0.0d0
+                               end do
                             else if (bcode == 2) then
-                               !$acc kernels
-                               q_1(bound(iboun,:),3) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_1(bound(iboun,ipbou),3) = 0.0d0
+                               end do
                             end if
                          end do
+                         !$acc end parallel loop
                       end if
 
                       !$acc parallel loop collapse(2)
@@ -275,18 +279,22 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
+                         !$acc parallel loop
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
-                               !$acc kernels
-                               q_2(bound(iboun,:),2) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_2(bound(iboun,ipbou),2) = 0.0d0
+                               end do
                             else if (bcode == 2) then
-                               !$acc kernels
-                               q_2(bound(iboun,:),3) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_2(bound(iboun,ipbou),3) = 0.0d0
+                               end do
                             end if
                          end do
+                         !$acc end parallel loop
                       end if
 
                       !$acc parallel loop collapse(2)
@@ -402,18 +410,22 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
+                         !$acc parallel loop
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
-                               !$acc kernels
-                               q_3(bound(iboun,:),2) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_3(bound(iboun,ipbou),2) = 0.0d0
+                               end do
                             else if (bcode == 2) then
-                               !$acc kernels
-                               q_3(bound(iboun,:),3) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_3(bound(iboun,ipbou),3) = 0.0d0
+                               end do
                             end if
                          end do
+                         !$acc end parallel loop
                       end if
 
                       !$acc parallel loop collapse(2)
@@ -531,18 +543,22 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
+                         !$acc parallel loop
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
-                               !$acc kernels
-                               q_4(bound(iboun,:),2) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_4(bound(iboun,ipbou),2) = 0.0d0
+                               end do
                             else if (bcode == 2) then
-                               !$acc kernels
-                               q_4(bound(iboun,:),3) = 0.0d0
-                               !$acc end kernels
+                               !$acc loop vector
+                               do ipbou = 1,npbou
+                                  q_4(bound(iboun,ipbou),3) = 0.0d0
+                               end do
                             end if
                          end do
+                         !$acc end parallel loop
                       end if
                       !$acc parallel loop collapse(2)
                       do ipoin = 1,npoin

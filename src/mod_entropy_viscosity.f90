@@ -67,12 +67,16 @@ module mod_entropy_viscosity
                        !
                        ! Update Reta
                        !
-                       Reta = Reta+1.0d0*R1
+                       !$acc kernels
+                       Reta(:) = Reta(:)+1.0d0*R1(:)
+                       !$acc end kernels
 
                        !
                        ! Temporal mass
                        !
-                       R2 = (rho(:,1)-rhok)/dt
+                       !$acc kernels
+                       R2(:) = (rho(:,1)-rhok(:))/dt
+                       !$acc end kernels
                        !
                        ! Alter R2 with Mcw
                        !
@@ -80,12 +84,16 @@ module mod_entropy_viscosity
                        !
                        ! Compute weighted mass convec
                        !
-                       Rrho = 0.0d0
+                       !$acc kernels
+                       Rrho(:) = 0.0d0
+                       !$acc end kernels
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho,alpha)
                        !
                        ! Update Rrho with both terms
                        !
-                       Rrho = Rrho+1.0d0*aux1
+                       !$acc kernels
+                       Rrho(:) = Rrho(:)+1.0d0*aux1(:)
+                       !$acc end kernels
                        !
                        ! Apply solver
                        !
