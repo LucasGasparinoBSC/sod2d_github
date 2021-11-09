@@ -84,6 +84,7 @@ program sod2d
         write(file_path,*) "./mesh/"
         write(*,*) "--| ALL MESH FILES MUST BE IN ",trim(adjustl(file_path))," !"
         write(*,*) "--| ENTER NAME OF MESH RELATED FILES :"
+        call nvtxStartRange("Read mesh")
         !read(*,*) file_name
         write(file_name,*) "shock_tube" ! NVVP
         call read_dims(file_path,file_name,npoin,nelem,nboun)
@@ -93,16 +94,19 @@ program sod2d
         allocate(coord(npoin,ndime))
         call read_geo_dat(file_path,file_name,npoin,nelem,nboun,nnode,ndime,npbou,connec,bound,coord)
         call read_fixbou(file_path,file_name,nboun,nbcodes,bou_codes)
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Compute characteristic size of elements                             !
         !*********************************************************************!
 
+        call nvtxStartRange("Elem size compute")
         allocate(helem(nelem))
         do ielem = 1,nelem
            call char_length(ielem,nelem,nnode,npoin,ndime,connec,coord,he_aux)
            helem(ielem) = he_aux
         end do
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Create mesh graph for CSR matrices                                  !
@@ -124,28 +128,43 @@ program sod2d
         !*********************************************************************!
 
         write(*,*) "--| SPLITTING BOUNDARY NODES FROM DOFs..."
+        call nvtxStartRange("Bnodes split")
         allocate(aux1(npoin))
 
         !
         ! Fill aux1 with all nodes in order
         !
+        !$acc parallel loop
         do ipoin = 1,npoin
            aux1(ipoin) = ipoin
         end do
+        !$acc end parallel loop
 
         !
         ! Zero aux1 entries that belong to a boundary
         !
-        do ipoin = 1,npoin       ! Loop over all nodes to fill aux()
-           do iboun = 1,nboun    ! Loop over element edges belonging to a boundary
-              do ipbou = 1,npbou ! Loop over nodes on an element face belonging to a boundary
-                 if (bound(iboun,ipbou) == ipoin) then
-                    aux1(ipoin) = 0
-                    exit
-                 end if
-              end do
+        !!$acc parallel loop collapse(2)
+        !!do ipoin = 1,npoin       ! Loop over all nodes to fill aux()
+        !!   do iboun = 1,nboun    ! Loop over element edges belonging to a boundary
+        !!      !!$acc loop seq
+        !!      do ipbou = 1,npbou ! Loop over nodes on an element face belonging to a boundary
+        !!         if (bound(iboun,ipbou) == ipoin) then
+        !!            aux1(ipoin) = 0
+        !!            exit
+        !!         end if
+        !!      end do
+        !!   end do
+        !!end do
+        !!$acc end parallel loop
+        !
+        !$acc parallel loop gang
+        do iboun = 1,nboun
+           !$acc loop vector
+           do ipbou = 1,npbou
+              aux1(bound(iboun,ipbou)) = 0
            end do
         end do
+        !$acc end parallel loop
 
         !
         ! Determine how many nodes are boundary nodes
@@ -170,6 +189,7 @@ program sod2d
         !
         idof = 0    ! Counter for free nodes
         ibnodes = 0 ! Counter for boundary nodes
+        !$acc parallel loop reduction(+:idof,ibnodes)
         do ipoin = 1,npoin
            if (aux1(ipoin) == 0) then
               ibnodes = ibnodes+1
@@ -179,12 +199,15 @@ program sod2d
               ldof(idof) = aux1(ipoin)
            end if
         end do
+        !$acc end parallel loop
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Allocate variables                                                  !
         !*********************************************************************!
 
         WRITE(*,*) "--| ALLOCATING MAIN VARIABLES"
+        call nvtxStartRange("Allocate main vars")
         !
         ! Last rank is for prediction-advance related to entropy viscosity,
         ! where 1 is prediction, 2 is final value
@@ -197,14 +220,17 @@ program sod2d
         allocate(Tem(npoin,2))      ! Temperature
         allocate(e_int(npoin,2))    ! Internal Energy
         allocate(mu_e(nelem))       ! Elemental viscosity
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Read initial conditions                                             !
         !*********************************************************************!
 
+        call nvtxStartRange("Read ICs")
         call read_veloc(ndime,npoin,file_path,u(:,:,2))
         call read_densi(npoin,file_path,rho(:,2))
         call read_press(npoin,file_path,pr(:,2)) ! Can be switched for TEMPE
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Generate complementary info                                         !
@@ -212,6 +238,7 @@ program sod2d
 
         ! Assuming u, rho, p as IC:
 
+        call nvtxStartRange("Additional data")
         !$acc parallel loop
         do ipoin = 1,npoin
            e_int(ipoin,2) = pr(ipoin,2)/(rho(ipoin,2)*(gamma_gas-1.0d0))
@@ -223,12 +250,15 @@ program sod2d
         !$acc kernels
         mu_e(:) = 0.0d0
         !$acc end kernels
+        call nvtxEndRange
 
         !
         ! Call VTK output
         !
+        call nvtxStartRange("1st write")
         call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
                              rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Generate GLL table                                                  !
@@ -236,6 +266,7 @@ program sod2d
 
         write(*,*) "--| GENERATING GAUSSIAN QUADRATURE TABLE..."
 
+        call nvtxStartRange("Gaussian Quadrature")
         ! TODO: allow for more element types...
 
         if (ndime == 2) then ! 2D elements
@@ -297,6 +328,7 @@ program sod2d
               STOP 1
            end if
         end if
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Generate N and dN for all GP                                        !
@@ -305,6 +337,7 @@ program sod2d
         ! TODO: Allow for more element types
 
         write(*,*) "--| GENERATING SHAPE FUNCTIONS AND ISOPAR. DERIVATIVES..."
+        call nvtxStartRange("N and dN")
 
         allocate(N(nnode),dN(ndime,nnode))
         allocate(Ngp(ngaus,nnode),dNgp(ndime,nnode,ngaus))
@@ -334,6 +367,7 @@ program sod2d
            Ngp(igaus,:) = N
            dNgp(:,:,igaus) = dN
         end do
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Generate Jacobian related information                               !
@@ -383,9 +417,11 @@ program sod2d
         !*********************************************************************!
 
         write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
+        call nvtxStartRange("Lumped mass compute")
         allocate(Ml(npoin))
         call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         solver_type = 'LUMSO'
+        call nvtxEndRange
 
         !write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
         !allocate(Mc(nzdom))
