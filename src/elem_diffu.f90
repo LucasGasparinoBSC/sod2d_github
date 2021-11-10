@@ -280,12 +280,12 @@ module elem_diffu
                       integer(4)              :: ielem, igaus, inode, jnode, idime
                       real(8)                 :: Re(nnode), kappa_e
                       real(8)                 :: el_u(nnode,ndime), el_Tem(nnode), el_Ke(nnode)
-                      real(8)                 :: grad_T(ndime,ngaus), grad_Ke(ndime,ngaus)
+                      !real(8)                 :: grad_T(ndime,ngaus), grad_Ke(ndime,ngaus)
                       real(8)                 :: gradT, gradKe
 
                       Rener = 0.0d0
                       call nvtxStartRange("Energy diffusion")
-                      !$acc parallel loop gang private(ind,grad_T,grad_Ke,el_Ke,Re)
+                      !$acc parallel loop gang private(ind,el_Ke,Re)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
