@@ -7,7 +7,7 @@ module mod_entropy_viscosity
       contains
 
               subroutine residuals(nelem,ngaus,npoin,nnode,ndime, &
-                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
+                                   ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rhok, uk, prk, qk, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -20,7 +20,8 @@ module mod_entropy_viscosity
 
                       integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime, ppow
                       integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: Ngp(nnode,ngaus), gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)  :: Ngp(nnode,ngaus), dNgp(ndime,nnode,ngaus)
+                      real(8),    intent(in)  :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ml(npoin)
                       real(8),    intent(in)  :: dt, gamma_gas
                       real(8),    intent(in)  :: rhok(npoin), uk(npoin,ndime), prk(npoin), qk(npoin,ndime)     ! From substep
@@ -57,7 +58,7 @@ module mod_entropy_viscosity
                        !
                        ! Entropy residual
                        !
-                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_eta,Reta)
+                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,f_eta,Reta)
                        !
                        ! Alter Reta with inv(Mc)
                        !
@@ -87,7 +88,8 @@ module mod_entropy_viscosity
                        !$acc kernels
                        Rrho(:) = 0.0d0
                        !$acc end kernels
-                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,f_rho,Rrho,alpha)
+                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp, &
+                                                  dNgp,He,gpvol,f_rho,Rrho,alpha)
                        !
                        ! Update Rrho with both terms
                        !

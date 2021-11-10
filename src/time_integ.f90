@@ -10,7 +10,7 @@ module time_integ
 
               subroutine rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
                               ppow,ldof,lbnodes,connec,bound,bou_codes, &
-                              Ngp,gpcar,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                              Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                               rho,u,q,pr,E,Tem,e_int,mu_e)
 
                       implicit none
@@ -20,7 +20,8 @@ module time_integ
                       integer(4), intent(in)             :: ldof(ndof), lbnodes(nbnodes), connec(nelem,nnode)
                       integer(4), intent(in)             :: bound(nboun,npbou), bou_codes(nboun,2)
                       integer(4), intent(in)             :: ppow
-                      real(8),    intent(in)             :: Ngp(ngaus,nnode), gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)             :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
+                      real(8),    intent(in)             :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)             :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)             :: dt, helem(nelem)
                       real(8),    intent(in)             :: Ml(npoin)
@@ -84,7 +85,7 @@ module time_integ
                          !
                          call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, &
-                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
+                                   ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -101,7 +102,7 @@ module time_integ
                       !
                       ! Mass
                       !
-                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q(:,:,pos),Rmass_1)
+                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q(:,:,pos),Rmass_1)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),mu_e,Rdiff_scal)
                          !$acc kernels
@@ -118,7 +119,7 @@ module time_integ
                       !
                       ! Momentum
                       !
-                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),q(:,:,pos),pr(:,pos),Rmom_1)
+                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),q(:,:,pos),pr(:,pos),Rmom_1)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),mu_e,Rdiff_vect)
                          !$acc kernels
@@ -174,7 +175,7 @@ module time_integ
                       !
                       ! Total energy
                       !
-                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),pr(:,pos),E(:,pos),Rener_1)
+                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),pr(:,pos),E(:,pos),Rener_1)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Tem(:,pos),mu_e,Rdiff_scal)
                          !$acc kernels
@@ -224,7 +225,7 @@ module time_integ
                          !
                          call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, &
-                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
+                                   ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_1, u_1, pr_1, q_1, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -238,7 +239,7 @@ module time_integ
 
                       end if
 
-                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_1,Rmass_2)
+                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q_1,Rmass_2)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_1,mu_e,Rdiff_scal)
                          !$acc kernels
@@ -252,7 +253,7 @@ module time_integ
                       rho_2(:) = rho(:,pos)-(dt/2.0d0)*Rmass_2(:)
                       !$acc end kernels
 
-                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,q_1,pr_1,Rmom_2)
+                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_1,q_1,pr_1,Rmom_2)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,mu_e,Rdiff_vect)
                          !$acc kernels
@@ -305,7 +306,7 @@ module time_integ
                       end do
                       !$acc end parallel loop
 
-                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,pr_1,E_1,Rener_2)
+                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_1,pr_1,E_1,Rener_2)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,Tem_1,mu_e,Rdiff_scal)
                          !$acc kernels
@@ -355,7 +356,7 @@ module time_integ
                          !
                          call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, &
-                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
+                                   ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_2, u_2, pr_2, q_2, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -369,7 +370,7 @@ module time_integ
 
                       end if
 
-                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_2,Rmass_3)
+                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q_2,Rmass_3)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_2,mu_e,Rdiff_scal)
                          !$acc kernels
@@ -383,7 +384,7 @@ module time_integ
                       rho_3(:) = rho(:,pos)-(dt/1.0d0)*Rmass_3(:)
                       !$acc end kernels
 
-                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,q_2,pr_2,Rmom_3)
+                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,q_2,pr_2,Rmom_3)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,mu_e,Rdiff_vect)
                          !$acc kernels
@@ -436,7 +437,7 @@ module time_integ
                       end do
                       !$acc end parallel loop
 
-                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,pr_2,E_2,Rener_3)
+                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,pr_2,E_2,Rener_3)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,Tem_2,mu_e,Rdiff_scal)
                          !$acc kernels
@@ -486,7 +487,7 @@ module time_integ
                          !
                          call nvtxStartRange("ENVIT")
                          call residuals(nelem,ngaus,npoin,nnode,ndime, &
-                                   ppow, connec, Ngp, gpcar, gpvol, Ml, &
+                                   ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_3, u_3, pr_3, q_3, &
                                    rho, u, pr, q, gamma_gas, &
                                    Reta, Rrho)
@@ -500,7 +501,7 @@ module time_integ
 
                       end if
 
-                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q_3,Rmass_4)
+                      call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q_3,Rmass_4)
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_3,mu_e,Rdiff_scal)
                          !$acc kernels
@@ -515,7 +516,7 @@ module time_integ
                       rho_4(:) = rho(:,pos)-(dt/6.0d0)*aux_mass(:)
                       !$acc end kernels
 
-                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,q_3,pr_3,Rmom_4)
+                      call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,q_3,pr_3,Rmom_4)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,mu_e,Rdiff_vect)
                          !$acc kernels
@@ -568,7 +569,7 @@ module time_integ
                       end do
                       !$acc end parallel loop
 
-                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,pr_3,E_3,Rener_4)
+                      call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,pr_3,E_3,Rener_4)
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,Tem_3,mu_e,Rdiff_scal)
                          !$acc kernels

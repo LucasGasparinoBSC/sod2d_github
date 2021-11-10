@@ -11,7 +11,7 @@ module elem_convec
 
       contains
 
-              subroutine mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q,Rmass)
+              subroutine mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q,Rmass)
 
                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                       ! Subroutine to compute R = div(rho*u) using a standard Continuous  !
@@ -23,15 +23,15 @@ module elem_convec
 
                       integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
                       integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: Ngp(ngaus,nnode)
-                      real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)  :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
+                      real(8),    intent(in)  :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: q(npoin,ndime)
                       real(8),    intent(out) :: Rmass(npoin)
                       integer(4)              :: ind(nnode)
-                      integer(4)              :: ielem, igaus, inode, jnode, idime
+                      integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: Re(nnode)
-                      real(8)                 :: tmp
+                      real(8)                 :: tmp1, tmp2
 
                       Rmass = 0.0d0
                       call nvtxStartRange("Mass Convection")
@@ -44,14 +44,18 @@ module elem_convec
                          !
                          !$acc loop seq
                          do igaus = 1,ngaus
+                            tmp2 = 0.0d0
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
-                               !$acc loop vector
-                               do inode = 1,nnode
-                                  Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                              (tmp)
+                               !$acc loop seq
+                               do jdime = 1,ndime
+                                  tmp1 = dot_product(dNgp(jdime,:,igaus),q(ind,idime))
+                                  tmp2 = tmp2+He(idime,jdime,igaus,ielem)*tmp1
                                end do
+                            end do
+                            !$acc loop vector
+                            do inode = 1,nnode
+                               Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp2
                             end do
                          end do
                          !
@@ -69,7 +73,7 @@ module elem_convec
 
               end subroutine mass_convec
 
-              subroutine mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,q,pr,Rmom)
+              subroutine mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u,q,pr,Rmom)
 
                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                       ! Subroutine to compute R = div(q*u) using a standard Continuous   !
@@ -82,8 +86,8 @@ module elem_convec
 
                       integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
                       integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: Ngp(ngaus,nnode)
-                      real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)  :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
+                      real(8),    intent(in)  :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: q(npoin,ndime), u(npoin,ndime), pr(npoin)
                       real(8),    intent(out) :: Rmom(npoin,ndime)
@@ -143,7 +147,7 @@ module elem_convec
 
               end subroutine mom_convec
 
-              subroutine ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u,pr,E,Rener)
+              subroutine ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u,pr,E,Rener)
 
                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                       ! Subroutine to compute R = div(u*(E+p)) using a standard Continuous !
@@ -156,16 +160,16 @@ module elem_convec
 
                       integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
                       integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: Ngp(ngaus,nnode)
-                      real(8),    intent(in)  :: gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)  :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
+                      real(8),    intent(in)  :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: u(npoin,ndime), pr(npoin), E(npoin)
                       real(8),    intent(out) :: Rener(npoin)
                       integer(4)              :: ind(nnode)
-                      integer(4)              :: ielem, igaus, inode, jnode, idime, ipoin
+                      integer(4)              :: ielem, igaus, inode, idime, ipoin, jdime
                       real(8)                 :: Re(nnode), fener(npoin,ndime)
                       real(8)                 :: el_fener(nnode,ndime)
-                      real(8)                 :: tmp
+                      real(8)                 :: tmp1, tmp2
 
                       Rener = 0.0d0
                       call nvtxStartRange("Energy Convection")
@@ -185,14 +189,18 @@ module elem_convec
                          !
                          !$acc loop seq
                          do igaus = 1,ngaus
+                            tmp2 = 0.0d0
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp = dot_product(gpcar(idime,:,igaus,ielem),el_fener(:,idime))
-                               !$acc loop vector
-                               do inode = 1,nnode
-                                  Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)* &
-                                              (tmp)
+                               !$acc loop seq
+                               do jdime = 1,ndime
+                                  tmp1 = dot_product(dNgp(jdime,:,igaus),el_fener(:,idime))
+                                  tmp2 = tmp2+He(idime,jdime,igaus,ielem)*tmp1
                                end do
+                            end do
+                            !$acc loop vector
+                            do inode = 1,nnode
+                               Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp2
                             end do
                          end do
                          !
@@ -210,22 +218,23 @@ module elem_convec
 
               end subroutine ener_convec
 
-              subroutine generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,q,Rconvec,alpha)
+              subroutine generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp, &
+                                               dNgp,He,gpvol,q,Rconvec,alpha)
 
                       implicit none
 
                       integer(4), intent(in)           :: nelem, ngaus, npoin, nnode, ndime
                       integer(4), intent(in)           :: connec(nelem,nnode)
-                      real(8),    intent(in)           :: Ngp(ngaus,nnode)
-                      real(8),    intent(in)           :: gpcar(ndime,nnode,ngaus,nelem)
+                      real(8),    intent(in)           :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
+                      real(8),    intent(in)           :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)           :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)           :: q(npoin,ndime)
                       real(8),    intent(in), optional :: alpha(npoin)
                       real(8),    intent(out)          :: Rconvec(npoin)
                       integer(4)                       :: ind(nnode)
-                      integer(4)                       :: ielem, igaus, inode, jnode, idime
+                      integer(4)                       :: ielem, igaus, inode, idime, jdime
                       real(8)                          :: Re(nnode), el_a(nnode)
-                      real(8)                          :: tmp1, tmp2
+                      real(8)                          :: tmp1, tmp2, tmp3
 
                       Rconvec = 0.0d0
                       call nvtxStartRange("Generic Convection")
@@ -243,15 +252,19 @@ module elem_convec
                          !
                          !$acc loop seq
                          do igaus = 1,ngaus
+                            tmp3 = 0.0d0
                             tmp1 = dot_product(Ngp(igaus,:),el_a(:))
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp2 = dot_product(gpcar(idime,:,igaus,ielem),q(ind,idime))
-                               !$acc loop vector
-                               do inode = 1,nnode
-                                  Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1* &
-                                              (tmp2)
+                               !$acc loop seq
+                               do jdime = 1,ndime
+                                  tmp2 = dot_product(dNgp(jdime,:,igaus),q(ind,idime))
+                                  tmp3 = tmp3+He(idime,jdime,igaus,ielem)*tmp2
                                end do
+                            end do
+                            !$acc loop vector
+                            do inode = 1,nnode
+                               Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1*tmp2
                             end do
                          end do
                          !
