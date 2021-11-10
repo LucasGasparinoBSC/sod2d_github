@@ -5,4 +5,3 @@ Simple test for the GPU Matrix-free FEM algorithm of Ljunkvist being applied to 
    - Copy the executable to your case folder, one behind "mesh";
    - During runtime, provide the name of the mesh files to be read;
 
-Need nvhpc/21.9 version to compile with openACC!
