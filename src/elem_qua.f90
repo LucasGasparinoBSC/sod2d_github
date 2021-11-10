@@ -4,6 +4,7 @@ module elem_qua
 
                 subroutine qua04(s,t,N,dN) ! QUA04 element
 
+                        !$acc routine seq
                         implicit none
 
                         real(8), intent(in)  :: s, t
@@ -29,6 +30,7 @@ module elem_qua
 
                 subroutine qua09(s,t,N,dN) ! QUA09 element
 
+                        !$acc routine seq
                         ! TODO: IMPLEMENT PROPERLY!!!!!
 
                         implicit none

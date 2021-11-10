@@ -11,7 +11,6 @@ program sod2d
 #endif
         use cudafor
 
-        use omp_lib
         use elem_qua
         use elem_hex
         use jacobian_oper
@@ -255,6 +254,7 @@ program sod2d
         !
         ! Call VTK output
         !
+        write(*,*) "--| GENERATING 1st OUTPUT..."
         call nvtxStartRange("1st write")
         call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
                              rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
@@ -339,15 +339,16 @@ program sod2d
         write(*,*) "--| GENERATING SHAPE FUNCTIONS AND ISOPAR. DERIVATIVES..."
         call nvtxStartRange("N and dN")
 
-        allocate(N(nnode),dN(ndime,nnode))
+        !allocate(N(nnode),dN(ndime,nnode))
         allocate(Ngp(ngaus,nnode),dNgp(ndime,nnode,ngaus))
 
+        !$acc parallel loop
         do igaus = 1,ngaus
            s = xgp(igaus,1)
            t = xgp(igaus,2)
            if (ndime == 2) then
               if (nnode == 4) then
-                 call qua04(s,t,N,dN)
+                 call qua04(s,t,Ngp(igaus,:),dNgp(:,:,igaus))
               else if (nnode == 9) then
                  !call qua09(s,t,N,dN)
                  write(*,*) '--| NOT CODED YET!'
@@ -356,17 +357,18 @@ program sod2d
            else if (ndime == 3) then
               z = xgp(igaus,3)
               if (nnode == 8) then
-                 call hex08(s,t,z,N,dN)
+                 call hex08(s,t,z,Ngp(igaus,:),dNgp(:,:,igaus))
               else if (nnode == 27) then
-                 call hex27(s,t,z,N,dN)
+                 call hex27(s,t,z,Ngp(igaus,:),dNgp(:,:,igaus))
               else if (nnode == 64) then
                  !call hex64(s,t,z,N,dN)
               else
               end if
            end if
-           Ngp(igaus,:) = N
-           dNgp(:,:,igaus) = dN
+           !Ngp(igaus,:) = N
+           !dNgp(:,:,igaus) = dN
         end do
+        !$acc end parallel loop
         call nvtxEndRange
 
         !*********************************************************************!
@@ -376,40 +378,40 @@ program sod2d
         write(*,*) "--| GENERATING JACOBIAN RELATED INFORMATION..."
 
         call nvtxStartRange("Jacobian info")
-        allocate(elcod(ndime,nnode))
-        allocate(Je(ndime,ndime))
+        !allocate(elcod(ndime,nnode))
+        !allocate(Je(ndime,ndime))
         allocate(He(ndime,ndime))
         !allocate(struc_J(ndime,ndime,ngaus,nelem))
         !allocate(struc_H(ndime,ndime,ngaus,nelem))
         !allocate(struc_detJ(1,ngaus,nelem))
         allocate(gpvol(1,ngaus,nelem))
-        allocate(dxN(ndime,nnode))
+        !allocate(dxN(ndime,nnode))
         allocate(gpcar(ndime,nnode,ngaus,nelem))
 
-        !$acc parallel loop gang private(elcod)
+        !$acc parallel loop gang
         do ielem = 1,nelem
-           if (ndime == 2) then
-              elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
-              elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
-           else if (ndime == 3) then
-              elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
-              elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
-              elcod(3,1:nnode) = coord(connec(ielem,1:nnode),3)
-           end if
-           !$acc loop vector private(Je,He,dN,dxN)
+           !if (ndime == 2) then
+           !   elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
+           !   elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
+           !else if (ndime == 3) then
+           !   elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
+           !   elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
+           !   elcod(3,1:nnode) = coord(connec(ielem,1:nnode),3)
+           !end if
+           !$acc loop vector private(He)
            do igaus = 1,ngaus
-              dN = dNgp(:,:,igaus)
-              call elem_jacobian(ndime,nnode,elcod,dN,Je,detJe,He)
+              !dN = dNgp(:,:,igaus)
+              call elem_jacobian(ndime,nnode,coord(connec(ielem,1:nnode),:),dNgp(:,:,igaus),detJe,He)
               !struc_J(:,:,igaus,ielem) = Je
               !struc_detJ(1,igaus,ielem) = detJe
               !struc_H(:,:,igaus,ielem) = He
-              call cartesian_deriv(ndime,nnode,dN,He,dxN)
-              gpcar(:,:,igaus,ielem) = dxN(:,:)
+              call cartesian_deriv(ndime,nnode,dNgp(:,:,igaus),He,gpcar(:,:,igaus,ielem))
+              !gpcar(:,:,igaus,ielem) = dxN(:,:)
               gpvol(1,igaus,ielem) = wgp(igaus)*detJe
            end do
         end do
         !$acc end parallel loop
-        !deallocate(elcod,dxN,dNgp,dN,Je,He)
+        deallocate(He)
         call  nvtxEndRange
 
         !*********************************************************************!
@@ -443,56 +445,56 @@ program sod2d
 
 #ifdef GPU
 
-        ! Range with standard color
-        call nvtxStartRange("Memory Management")
+        !! Range with standard color
+        !call nvtxStartRange("Memory Management")
 
-        ! Mesh info
+        !! Mesh info
 
-        allocate(connec_d(nelem,nnode))
-        allocate(lbnodes_d(nbnodes))
+        !allocate(connec_d(nelem,nnode))
+        !allocate(lbnodes_d(nbnodes))
 
-        connec_d = connec
-        lbnodes_d = lbnodes
+        !connec_d = connec
+        !lbnodes_d = lbnodes
 
-        ! Primary vars.
+        !! Primary vars.
 
-        allocate(rho_d(npoin,2))      ! Density
-        allocate(u_d(npoin,ndime,2))  ! Velocity
-        allocate(q_d(npoin,ndime,2))  ! momentum
-        allocate(pr_d(npoin,2))       ! Pressure
-        allocate(E_d(npoin,2))        ! Total Energy
-        allocate(Tem_d(npoin,2))      ! Temperature
-        allocate(e_int_d(npoin,2))    ! Internal Energy
-        allocate(mu_e_d(nelem))       ! Elemental viscosity
+        !allocate(rho_d(npoin,2))      ! Density
+        !allocate(u_d(npoin,ndime,2))  ! Velocity
+        !allocate(q_d(npoin,ndime,2))  ! momentum
+        !allocate(pr_d(npoin,2))       ! Pressure
+        !allocate(E_d(npoin,2))        ! Total Energy
+        !allocate(Tem_d(npoin,2))      ! Temperature
+        !allocate(e_int_d(npoin,2))    ! Internal Energy
+        !allocate(mu_e_d(nelem))       ! Elemental viscosity
 
-        rho_d = rho
-        u_d = u
-        q_d = q
-        pr_d = pr
-        E_d = E
-        Tem_d = Tem
-        e_int_d = e_int
+        !rho_d = rho
+        !u_d = u
+        !q_d = q
+        !pr_d = pr
+        !E_d = E
+        !Tem_d = Tem
+        !e_int_d = e_int
 
-        ! Mass matrices
+        !! Mass matrices
 
-        allocate(Ml_d(npoin))
-        !allocate(Mc_d(nzdom))
+        !allocate(Ml_d(npoin))
+        !!allocate(Mc_d(nzdom))
 
-        Ml_d = Ml
-        !Mc_d = Mc
+        !Ml_d = Ml
+        !!Mc_d = Mc
 
-        ! Elemental info
+        !! Elemental info
 
-        allocate(Ngp_d(ngaus,npoin))
-        allocate(gpvol_d(1,ngaus,nelem))
-        allocate(gpcar_d(ndime,nnode,ngaus,nelem))
+        !allocate(Ngp_d(ngaus,npoin))
+        !allocate(gpvol_d(1,ngaus,nelem))
+        !allocate(gpcar_d(ndime,nnode,ngaus,nelem))
 
-        Ngp_d = Ngp
-        gpvol_d = gpvol
-        gpcar_d = gpcar
+        !Ngp_d = Ngp
+        !gpvol_d = gpvol
+        !gpcar_d = gpcar
 
-        ! End nvtx range
-        call nvtxEndRange
+        !! End nvtx range
+        !call nvtxEndRange
 
 #endif
 

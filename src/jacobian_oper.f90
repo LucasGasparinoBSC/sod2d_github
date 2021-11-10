@@ -2,7 +2,7 @@ module jacobian_oper
 
         contains
 
-                subroutine elem_jacobian(ndime,nnode,elcod,dN,Je,detJe,He)
+                subroutine elem_jacobian(ndime,nnode,elcod,dN,detJe,He)
                    !$acc routine seq
 
                         ! Computes the Jacobian transformation of an element, its determinant and
@@ -13,11 +13,11 @@ module jacobian_oper
                         implicit none
 
                         integer(4), intent(in)  :: ndime, nnode
-                        real(8),    intent(in)  :: elcod(ndime,nnode), dN(ndime,nnode)
-                        real(8),    intent(out) :: detJe, Je(ndime,ndime), He(ndime,ndime)
-                        real(8)                 :: a(9), b(9)
+                        real(8),    intent(in)  :: elcod(nnode,ndime), dN(ndime,nnode)
+                        real(8),    intent(out) :: detJe, He(ndime,ndime)
+                        real(8)                 :: Je(ndime,ndime), a(9), b(9)
 
-                        Je = matmul(dN,transpose(elcod))
+                        Je = matmul(dN,elcod)
                         if (ndime == 2) then
                            detJe = Je(1,1)*Je(2,2)-Je(2,1)*Je(1,2)
                            He(1,1) = Je(2,2)
