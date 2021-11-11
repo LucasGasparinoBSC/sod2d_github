@@ -104,7 +104,7 @@ module time_integ
                       !
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q(:,:,pos),Rmass_1)
                       if (flag_predic == 0) then
-                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho(:,pos),mu_e,Rdiff_scal)
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,rho(:,pos),mu_e,Rdiff_scal)
                          !$acc kernels
                          Rmass_1(:) = Rmass_1(:) + Rdiff_scal(:)
                          !$acc end kernels
@@ -121,7 +121,7 @@ module time_integ
                       !
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),q(:,:,pos),pr(:,pos),Rmom_1)
                       if (flag_predic == 0) then
-                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),mu_e,Rdiff_vect)
+                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),mu_e,Rdiff_vect)
                          !$acc kernels
                          Rmom_1(:,:) = Rmom_1(:,:) + Rdiff_vect(:,:)
                          !$acc end kernels
@@ -177,7 +177,7 @@ module time_integ
                       !
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),pr(:,pos),E(:,pos),Rener_1)
                       if (flag_predic == 0) then
-                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u(:,:,pos),Tem(:,pos),mu_e,Rdiff_scal)
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),Tem(:,pos),mu_e,Rdiff_scal)
                          !$acc kernels
                          Rener_1(:) = Rener_1(:) + Rdiff_scal(:)
                          !$acc end kernels
@@ -241,7 +241,7 @@ module time_integ
 
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q_1,Rmass_2)
                       if (flag_predic == 0) then
-                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_1,mu_e,Rdiff_scal)
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,rho_1,mu_e,Rdiff_scal)
                          !$acc kernels
                          Rmass_2(:) = Rmass_2(:) + Rdiff_scal(:)
                          !$acc end kernels
@@ -255,7 +255,7 @@ module time_integ
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_1,q_1,pr_1,Rmom_2)
                       if (flag_predic == 0) then
-                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,mu_e,Rdiff_vect)
+                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_1,mu_e,Rdiff_vect)
                          !$acc kernels
                          Rmom_2(:,:) = Rmom_2(:,:) + Rdiff_vect(:,:)
                          !$acc end kernels
@@ -308,7 +308,7 @@ module time_integ
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_1,pr_1,E_1,Rener_2)
                       if (flag_predic == 0) then
-                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_1,Tem_1,mu_e,Rdiff_scal)
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_1,Tem_1,mu_e,Rdiff_scal)
                          !$acc kernels
                          Rener_2(:) = Rener_2(:) + Rdiff_scal(:)
                          !$acc end kernels
@@ -372,7 +372,7 @@ module time_integ
 
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q_2,Rmass_3)
                       if (flag_predic == 0) then
-                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_2,mu_e,Rdiff_scal)
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,rho_2,mu_e,Rdiff_scal)
                          !$acc kernels
                          Rmass_3(:) = Rmass_3(:) + Rdiff_scal(:)
                          !$acc end kernels
@@ -386,7 +386,7 @@ module time_integ
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,q_2,pr_2,Rmom_3)
                       if (flag_predic == 0) then
-                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,mu_e,Rdiff_vect)
+                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,mu_e,Rdiff_vect)
                          !$acc kernels
                          Rmom_3(:,:) = Rmom_3(:,:) + Rdiff_vect(:,:)
                          !$acc end kernels
@@ -439,7 +439,7 @@ module time_integ
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,pr_2,E_2,Rener_3)
                       if (flag_predic == 0) then
-                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_2,Tem_2,mu_e,Rdiff_scal)
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,Tem_2,mu_e,Rdiff_scal)
                          !$acc kernels
                          Rener_3(:) = Rener_3(:) + Rdiff_scal(:)
                          !$acc end kernels
@@ -503,7 +503,7 @@ module time_integ
 
                       call mass_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,q_3,Rmass_4)
                       if (flag_predic == 0) then
-                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,rho_3,mu_e,Rdiff_scal)
+                         call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,rho_3,mu_e,Rdiff_scal)
                          !$acc kernels
                          Rmass_4(:) = Rmass_4(:) + Rdiff_scal(:)
                          !$acc end kernels
@@ -518,7 +518,7 @@ module time_integ
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,q_3,pr_3,Rmom_4)
                       if (flag_predic == 0) then
-                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,mu_e,Rdiff_vect)
+                         call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,mu_e,Rdiff_vect)
                          !$acc kernels
                          Rmom_4(:,:) = Rmom_4(:,:) + Rdiff_vect(:,:)
                          !$acc end kernels
@@ -571,7 +571,7 @@ module time_integ
 
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,pr_3,E_3,Rener_4)
                       if (flag_predic == 0) then
-                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,gpcar,gpvol,u_3,Tem_3,mu_e,Rdiff_scal)
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,Tem_3,mu_e,Rdiff_scal)
                          !$acc kernels
                          Rener_4(:) = Rener_4(:) + Rdiff_scal(:)
                          !$acc end kernels

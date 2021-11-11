@@ -328,7 +328,7 @@ program sod2d
               STOP 1
            end if
         end if
-        call nvtxEndRangea
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Generate N and dN for all GP                                        !

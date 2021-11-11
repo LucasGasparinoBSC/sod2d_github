@@ -92,13 +92,13 @@ module elem_convec
                       real(8),    intent(in)  :: q(npoin,ndime), u(npoin,ndime), pr(npoin)
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
-                      integer(4)              :: ielem, igaus, idime, jdime, inode, jnode
+                      integer(4)              :: ielem, igaus, idime, jdime, inode, kdime
                       real(8)                 :: Re(nnode,ndime), divgp, grpgp
-                      real(8)                 :: tmp3(nnode), tmp2
+                      real(8)                 :: tmp2, tmp1
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum convection")
-                      !$acc parallel loop gang private(ind,tmp3,Re)
+                      !$acc parallel loop gang private(ind,Re)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -110,15 +110,16 @@ module elem_convec
                             !$acc loop seq
                             do idime = 1,ndime
                                divgp = 0.0d0
-                               grpgp = dot_product(gpcar(idime,:,igaus,ielem),pr(ind))
+                               grpgp = 0.0d0
                                !$acc loop seq
                                do jdime = 1,ndime
-                                  !$acc loop vector
-                                  do inode = 1,nnode
-                                     tmp3(inode) = q(ind(inode),idime)*u(ind(inode),jdime) ! qi * uj
+                                  tmp1 = dot_product(dNgp(jdime,:,igaus),pr(ind))
+                                  grpgp = grpgp+He(idime,jdime,igaus,ielem)*tmp1
+                                  !$acc loop seq
+                                  do kdime = 1,ndime
+                                     tmp2 = dot_product(dNgp(kdime,:,igaus),q(ind,idime)*u(ind,jdime))
+                                     divgp = divgp + He(jdime,kdime,igaus,ielem)*tmp2
                                   end do
-                                  tmp2 = dot_product(gpcar(jdime,:,igaus,ielem),tmp3(:))
-                                  divgp = divgp+tmp2
                                end do
                                !
                                ! Quadrature
