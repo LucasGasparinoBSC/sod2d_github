@@ -24,9 +24,11 @@ module elem_diffu
                       real(8)                 :: Re(nnode), nu_e
                       real(8)                 :: tmp1, tmp2, tmp3
 
-                      Rmass = 0.0d0
+                      !$acc kernels
+                      Rmass(:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Mass diffusion")
-                      !$acc parallel loop gang private(ind,Re)
+                      !$acc parallel loop gang private(ind,Re) vector_length(32)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -170,9 +172,11 @@ module elem_diffu
                       real(8) :: tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9
 
                       twoThirds = 2.0d0/3.0d0
-                      Rmom = 0.0d0
+                      !$acc kernels
+                      Rmom(:,:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Momentum diffusion")
-                      !$acc parallel loop gang private(ind,Re) vector_length(128)
+                      !$acc parallel loop gang private(ind,Re) vector_length(32)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
@@ -293,9 +297,11 @@ module elem_diffu
                       !real(8)                 :: grad_T(ndime,ngaus), grad_Ke(ndime,ngaus)
                       real(8)                 :: gradT, gradKe, tmp1, tmp2, tmp3
 
-                      Rener = 0.0d0
+                      !$acc kernels
+                      Rener(:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Energy diffusion")
-                      !$acc parallel loop gang private(ind,el_Ke,Re)
+                      !$acc parallel loop gang private(ind,el_Ke,Re) vector_length(32)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
