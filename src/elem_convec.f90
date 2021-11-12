@@ -180,7 +180,7 @@ module elem_convec
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind
                       integer(4)              :: ielem, igaus, idime, jdime, inode, kdime
-                      real(8)                 :: grc_1, grc_2, grc_3
+                      real(8)                 :: grc_1, grc_2, grc_3, Re(nnode,ndime)
                       real(8)                 :: f1,f2,f3,f4,f5,f6,f7,f8,f9
                       real(8)                 :: grad_111, grad_121,grad_131
                       real(8)                 :: grad_211, grad_221,grad_231
@@ -196,8 +196,9 @@ module elem_convec
                       Rmom(:,:) = 0.0d0
                       !$acc end kernels
                       call nvtxStartRange("Momentum convection")
-                      !$acc parallel loop gang vector_length(32)
+                      !$acc parallel loop gang private(Re) vector_length(32)
                       do ielem = 1,nelem
+                         Re = 0.0d0
                          !
                          ! Compute Fij = qi*uj+p*dij
                          !
@@ -288,32 +289,25 @@ module elem_convec
                             grc_3 = He(1,1,igaus,ielem)*grad_311+He(1,2,igaus,ielem)*grad_312+He(1,3,igaus,ielem)*grad_313
                             grc_3 = grc_3+He(2,1,igaus,ielem)*grad_321+He(2,2,igaus,ielem)*grad_322+He(2,3,igaus,ielem)*grad_323
                             grc_3 = grc_3+He(3,1,igaus,ielem)*grad_331+He(3,2,igaus,ielem)*grad_332+He(3,3,igaus,ielem)*grad_333
+                            !$acc loop vector
+                            do inode = 1,nnode
+                               Re(inode,1) = Re(inode,1)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*grc_1
+                               Re(inode,2) = Re(inode,2)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*grc_2
+                               Re(inode,3) = Re(inode,3)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*grc_3
+                            end do
                          end do
-                         !$acc loop vector
-                         do inode = 1,nnode
-                            ind = connec(ielem,inode)
-                            !$acc atomic update
-                            Rmom(ind,1) = Rmom(ind,1)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*grc_1
-                            !$acc end atomic
-                            !$acc atomic update
-                            Rmom(ind,2) = Rmom(ind,2)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*grc_2
-                            !$acc end atomic
-                            !$acc atomic update
-                            Rmom(ind,3) = Rmom(ind,3)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*grc_3
-                            !$acc end atomic
+                         !
+                         ! Final assembly
+                         !
+                         !$acc loop vector collapse(2)
+                         do idime = 1,ndime
+                            do inode = 1,nnode
+                              ind = connec(ielem,inode)
+                              !$acc atomic update
+                              Rmom(ind,idime) = Rmom(ind,idime)+Re(inode,idime)
+                              !$acc end atomic
+                            end do
                          end do
-                         !!!
-                         !!! Final assembly
-                         !!!
-                         !!!$acc loop vector collapse(2)
-                         !!do idime = 1,ndime
-                         !!   do inode = 1,nnode
-                         !!     ind = connec(ielem,inode)
-                         !!     !$acc atomic update
-                         !!     Rmom(ind,idime) = Rmom(ind,idime)+Re(inode,idime)
-                         !!     !$acc end atomic
-                         !!   end do
-                         !!end do
                       end do
                       !$acc end parallel loop
                       call nvtxEndRange
@@ -398,56 +392,60 @@ module elem_convec
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
-                      integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
-                      real(8),    intent(in)  :: He(ndime,ndime,ngaus,nelem)
-                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
-                      real(8),    intent(in)  :: q(npoin,ndime)
-                      real(8),    intent(in)  :: alpha(npoin)
-                      real(8),    intent(out) :: Rconvec(npoin)
-                      integer(4)              :: ind
-                      integer(4)              :: ielem, igaus, inode, idime, jdime
-                      real(8)                 :: tmp1, tmp2, tmp3
+                      integer(4), intent(in)            :: nelem, ngaus, npoin, nnode, ndime
+                      integer(4), intent(in)            :: connec(nelem,nnode)
+                      real(8),    intent(in)            :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
+                      real(8),    intent(in)            :: He(ndime,ndime,ngaus,nelem)
+                      real(8),    intent(in)            :: gpvol(1,ngaus,nelem)
+                      real(8),    intent(in)            :: q(npoin,ndime)
+                      real(8),    intent(in), optional  :: alpha(npoin)
+                      real(8),    intent(out)           :: Rconvec(npoin)
+                      integer(4)                        :: ind(nnode)
+                      integer(4)                        :: ielem, igaus, inode, idime, jdime
+                      real(8)                           :: tmp1, tmp2, tmp3, Re(nnode)
+                      real(8)                           :: el_w(nnode)
 
                       !$acc kernels
                       Rconvec(:) = 0.0d0
                       !$acc end kernels
                       call nvtxStartRange("Generic Convection")
-                      !$acc parallel loop gang vector_length(32)
+                      !$acc parallel loop gang private(ind,el_w,Re) vector_length(32)
                       do ielem = 1,nelem
+                         ind(:) = connec(ielem,:)
+                         if (present(alpha)) then
+                            el_w(:) = alpha(ind)
+                         else
+                            el_w(:) = 1.0d0
+                         end if
                          !
                          ! Quadrature
                          !
                          !$acc loop seq
                          do igaus = 1,ngaus
                             tmp3 = 0.0d0
-                            tmp1 = dot_product(Ngp(igaus,:),alpha(connec(ielem,:)))
+                            tmp1 = dot_product(Ngp(igaus,:),el_w(ind))
                             !$acc loop seq
                             do idime = 1,ndime
                                !$acc loop seq
                                do jdime = 1,ndime
-                                  tmp2 = dot_product(dNgp(jdime,:,igaus),q(connec(ielem,:),idime))
+                                  tmp2 = dot_product(dNgp(jdime,:,igaus),q(ind,idime))
                                   tmp3 = tmp3+He(idime,jdime,igaus,ielem)*tmp2
                                end do
                             end do
                             !$acc loop vector
                             do inode = 1,nnode
-                               ind = connec(ielem,inode)
-                               !$acc atomic update
-                               Rconvec(ind) = Rconvec(ind)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1*tmp2
-                               !$acc end atomic
+                               Re(inode) = Re(inode)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1*tmp2
                             end do
                          end do
-                         !!
-                         !! Assembly
-                         !!
-                         !!$acc loop vector
-                         !do inode = 1,nnode
-                         !   !$acc atomic update
-                         !   Rconvec(ind(inode)) = Rconvec(ind(inode))+Re(inode)
-                         !   !$acc end atomic
-                         !end do
+                         !
+                         ! Assembly
+                         !
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            !$acc atomic update
+                            Rconvec(ind(inode)) = Rconvec(ind(inode))+Re(inode)
+                            !$acc end atomic
+                         end do
                       end do
                       !$acc end parallel loop
                       call nvtxEndRange

@@ -254,11 +254,11 @@ program sod2d
         !
         ! Call VTK output
         !
-        write(*,*) "--| GENERATING 1st OUTPUT..."
-        call nvtxStartRange("1st write")
-        call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
-                             rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
-        call nvtxEndRange
+        !write(*,*) "--| GENERATING 1st OUTPUT..."
+        !call nvtxStartRange("1st write")
+        !call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
+        !                     rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+        !call nvtxEndRange
 
         !*********************************************************************!
         ! Generate GLL table                                                  !
@@ -434,7 +434,7 @@ program sod2d
         if (solver_type == 'APINV') then
                 write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
                 !read(*,*) ppow
-                ppow = 4 ! NVVP
+                ppow = 2 ! NVVP
         end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
@@ -547,13 +547,13 @@ program sod2d
            !
            ! Call VTK output
            !
-           if (istep == nsave) then
-              call nvtxStartRange("Output "//timeStep,istep)
-              call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
-                                   rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
-              nsave = nsave+nleap
-              call nvtxEndRange
-           end if
+           !if (istep == nsave) then
+           !   call nvtxStartRange("Output "//timeStep,istep)
+           !   call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
+           !                        rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+           !   nsave = nsave+nleap
+           !   call nvtxEndRange
+           !end if
 
            counter = counter+1
 

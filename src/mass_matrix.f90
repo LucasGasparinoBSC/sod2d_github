@@ -167,12 +167,23 @@ module mass_matrix
                       real(8),    intent(in), optional :: weight(npoin)
                       real(8),    intent(out)          :: Rmc(npoin)
                       integer(4)                       :: ielem, igaus, inode, ind(nnode)
-                      real(8)                          :: Re(nnode), el_w(nnode), tmp1, tmp2
+                      real(8)                          :: Re(nnode), tmp1, tmp2
+                      real(8)                          :: wtmp(npoin)
 
                       !
                       ! Initialize Mc to zeros
                       !
                       call nvtxStartRange("Cmass times vector")
+                      if(present(weight)) then
+                         !$acc kernels
+                         wtmp(:) = weight(:)
+                         !$acc end kernels
+                      else
+                         !$acc kernels
+                         wtmp(:) = 1.0d0
+                         !$acc end kernels
+                      end if
+
                       !$acc kernels
                       Rmc(:) = 0.0d0
                       !$acc end kernels
@@ -180,22 +191,16 @@ module mass_matrix
                       !
                       ! Loop over all elements to form Mc_e(nnode,nnode)
                       !
-                      !$acc parallel loop gang private(ind,el_w,Re)
+                      !$acc parallel loop gang private(ind,Re)
                       do ielem = 1,nelem
                          ind(1:nnode) = connec(ielem,1:nnode) ! get elemental indices
-                         if(present(weight))then
-                            el_w(1:nnode) = weight(ind)
-                         else
-                            el_w(:) = 1.0d0
-                         end if
-
                          !
                          ! Form Re with Gaussian quadrature (open)
                          !
                          Re = 0.0d0
                          !$acc loop seq
                          do igaus = 1,ngaus ! Loop over Gauss points
-                            tmp1 = dot_product(Ngp(igaus,:),el_w(:))
+                            tmp1 = dot_product(Ngp(igaus,:),wtmp(ind))
                             tmp2 = dot_product(Ngp(igaus,:),v(ind))
                             !$acc loop vector
                             do inode = 1,nnode ! Loop over element nodes (row)
