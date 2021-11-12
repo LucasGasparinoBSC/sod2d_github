@@ -66,15 +66,15 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! Element order
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 10 ! TODO: Needs to be input...
+        nstep = 2 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
-        nsave = 10 ! First step to save
-        nleap = 10 ! Saving interval
+        dt = 0.0025d0/4.0d0 ! TODO: make it adaptive...
+        nsave = 2 ! First step to save
+        nleap = 2 ! Saving interval
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !

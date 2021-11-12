@@ -98,7 +98,7 @@ module elem_convec
 
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum convection")
-                      !$acc parallel loop gang private(ind,Re)
+                      !$acc parallel loop gang private(ind,Re) vector_length(32)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
