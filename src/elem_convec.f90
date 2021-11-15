@@ -33,12 +33,17 @@ module elem_convec
                       real(8)                 :: Re(nnode)
                       real(8)                 :: tmp
 
-                      Rmass = 0.0d0
+                      !$acc kernels
+                      Rmass(:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Mass Convection")
-                      !$acc parallel loop gang private(ind,Re)
+                      !$acc parallel loop gang private(ind,Re) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode)
+                         end do
                          !
                          ! Quadrature
                          !
@@ -92,12 +97,20 @@ module elem_convec
                       real(8)                 :: Re(nnode,ndime), divgp, grpgp
                       real(8)                 :: tmp3(nnode), tmp2
 
-                      Rmom = 0.0d0
+                      !$acc kernels
+                      Rmom(:,:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Momentum convection")
                       !$acc parallel loop gang private(ind,tmp3,Re) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            ind(inode) = connec(ielem,inode)
+                            !$acc loop seq
+                            do idime = 1,ndime
+                               Re(inode,idime) = 0.0d0
+                            end do
+                         end do
                          !$acc loop seq
                          do igaus = 1,ngaus
                             !
@@ -167,12 +180,17 @@ module elem_convec
                       real(8)                 :: el_fener(nnode,ndime)
                       real(8)                 :: tmp
 
-                      Rener = 0.0d0
+                      !$acc kernels
+                      Rener(:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Energy Convection")
-                      !$acc parallel loop gang private(ind,Re,el_fener)
+                      !$acc parallel loop gang private(ind,Re,el_fener) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$acc loop vector
+                         do inode  = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode)
+                         end do
                          !$acc loop vector collapse(2)
                          do inode = 1,nnode
                             do idime = 1,ndime
@@ -227,12 +245,17 @@ module elem_convec
                       real(8)                          :: Re(nnode), el_a(nnode)
                       real(8)                          :: tmp1, tmp2
 
-                      Rconvec = 0.0d0
+                      !$acc kernels
+                      Rconvec(:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Generic Convection")
-                      !$acc parallel loop gang private(ind,Re,el_a)
+                      !$acc parallel loop gang private(ind,Re,el_a) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode)
+                         end do
                          if (present(alpha)) then
                             el_a(1:nnode) = alpha(ind)
                          else

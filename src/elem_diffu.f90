@@ -24,12 +24,17 @@ module elem_diffu
                       real(8)                 :: Re(nnode), nu_e
                       real(8)                 :: tmp1(ndime), tmp2
 
-                      Rmass = 0.0d0
+                      !$acc kernels
+                      Rmass(:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Mass diffusion")
-                      !$acc parallel loop gang private(ind,tmp1,Re)
+                      !$acc parallel loop gang private(ind,tmp1,Re) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$ acc loop vector
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode)
+                         end do
                          nu_e = mu_e(ielem)/maxval(abs(rho(ind)))
                          !$acc loop seq
                          do igaus = 1,ngaus
@@ -170,10 +175,16 @@ module elem_diffu
                       twoThirds = 2.0d0/3.0d0
                       Rmom = 0.0d0
                       call nvtxStartRange("Momentum diffusion")
-                      !$acc parallel loop gang private(ind,Re) vector_length(128)
+                      !$acc parallel loop gang private(ind,Re) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            ind(inode) = connec(ielem,inode)
+                            !$acc loop seq
+                            do idime = 1,ndime
+                               Re(inode,idime) = 0.0d0
+                            end do
+                         end do
                          !$acc loop seq
                          do igaus = 1,ngaus
                             grad_1=0.0d0
@@ -283,12 +294,17 @@ module elem_diffu
                       !real(8)                 :: grad_T(ndime,ngaus), grad_Ke(ndime,ngaus)
                       real(8)                 :: gradT, gradKe
 
-                      Rener = 0.0d0
+                      !$acc kernels
+                      Rener(:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Energy diffusion")
-                      !$acc parallel loop gang private(ind,el_Ke,Re)
+                      !$acc parallel loop gang private(ind,el_Ke,Re) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode)
+                         end do
                          kappa_e = mu_e(ielem)*1004.0d0/0.72d0 ! Fixed Cp and Pr
                          !kappa_e = mu_e(ielem)/(1.40d0-1.0d0)
                          !
