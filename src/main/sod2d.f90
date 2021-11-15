@@ -66,15 +66,15 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! Element order
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 100 ! TODO: Needs to be input...
+        nstep = 5 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
         dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
-        nsave = 100 ! First step to save
-        nleap = 100 ! Saving interval
+        nsave = 200 ! First step to save
+        nleap = 200 ! Saving interval
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -435,7 +435,7 @@ program sod2d
         if (solver_type == 'APINV') then
                 write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
                 !read(*,*) ppow
-                ppow = 4 ! NVVP
+                ppow = 2 ! NVVP
         end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 

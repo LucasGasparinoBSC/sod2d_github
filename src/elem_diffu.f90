@@ -173,7 +173,9 @@ module elem_diffu
                       real(8) :: tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9
 
                       twoThirds = 2.0d0/3.0d0
-                      Rmom = 0.0d0
+                      !$acc kernels
+                      Rmom(:,:) = 0.0d0
+                      !$acc end kernels
                       call nvtxStartRange("Momentum diffusion")
                       !$acc parallel loop gang private(ind,Re) vector_length(32)
                       do ielem = 1,nelem
