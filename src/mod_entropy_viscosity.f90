@@ -52,7 +52,7 @@ module mod_entropy_viscosity
                        !
                        !$acc kernels
                        R1(:) = (eta_p(:)-eta(:))/dt  ! Temporal entropy
-                       Reta = 0.0d0
+                       Reta(:) = 0.0d0
                        !$acc end kernels
                        !
                        ! Entropy residual
