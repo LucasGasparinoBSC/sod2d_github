@@ -66,15 +66,15 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! Element order
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 2 ! TODO: Needs to be input...
+        nstep = 100 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
-        dt = 0.0025d0/4.0d0 ! TODO: make it adaptive...
-        nsave = 2 ! First step to save
-        nleap = 2 ! Saving interval
+        dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
+        nsave = 100 ! First step to save
+        nleap = 100 ! Saving interval
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -254,11 +254,11 @@ program sod2d
         !
         ! Call VTK output
         !
-        !write(*,*) "--| GENERATING 1st OUTPUT..."
-        !call nvtxStartRange("1st write")
-        !call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
-        !                     rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
-        !call nvtxEndRange
+        write(*,*) "--| GENERATING 1st OUTPUT..."
+        call nvtxStartRange("1st write")
+        call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
+                             rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+        call nvtxEndRange
 
         !*********************************************************************!
         ! Generate GLL table                                                  !
@@ -547,13 +547,13 @@ program sod2d
            !
            ! Call VTK output
            !
-           !if (istep == nsave) then
-           !   call nvtxStartRange("Output "//timeStep,istep)
-           !   call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
-           !                        rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
-           !   nsave = nsave+nleap
-           !   call nvtxEndRange
-           !end if
+           if (istep == nsave) then
+              call nvtxStartRange("Output "//timeStep,istep)
+              call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
+                                   rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+              nsave = nsave+nleap
+              call nvtxEndRange
+           end if
 
            counter = counter+1
 
