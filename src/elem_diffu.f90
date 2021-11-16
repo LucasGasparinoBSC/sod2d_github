@@ -168,7 +168,7 @@ module elem_diffu
                       real(8)                  :: Re(nnode,ndime), twoThirds
 
                       real(8) :: grad_1, grad_2, grad_3, grad_4, grad_5, grad_6, grad_7, grad_8, grad_9
-                      real(8) :: div_1, div_2, div_3, div_4, div_5, div_6, div_7, div_8, div_9
+                      real(8) :: div_1!, div_2, div_3, div_4, div_5, div_6, div_7, div_8, div_9
                       real(8) :: tau_1, tau_2, tau_3, tau_4, tau_5, tau_6, tau_7, tau_8, tau_9
                       real(8) :: tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9
 
@@ -198,26 +198,26 @@ module elem_diffu
                             grad_7=0.0d0
                             grad_8=0.0d0
                             grad_9=0.0d0
-                            div_1=0.0d0
-                            div_2=0.0d0
-                            div_3=0.0d0
-                            div_4=0.0d0
-                            div_5=0.0d0
-                            div_6=0.0d0
-                            div_7=0.0d0
-                            div_8=0.0d0
-                            div_9=0.0d0
-                            tau_1=0.0d0
-                            tau_2=0.0d0
-                            tau_3=0.0d0
-                            tau_4=0.0d0
-                            tau_5=0.0d0
-                            tau_6=0.0d0
-                            tau_7=0.0d0
-                            tau_8=0.0d0
-                            tau_9=0.0d0
+                            !div_1=0.0d0
+                            !div_2=0.0d0
+                            !div_3=0.0d0
+                            !div_4=0.0d0
+                            !div_5=0.0d0
+                            !div_6=0.0d0
+                            !div_7=0.0d0
+                            !div_8=0.0d0
+                            !div_9=0.0d0
+                            !tau_1=0.0d0
+                            !tau_2=0.0d0
+                            !tau_3=0.0d0
+                            !tau_4=0.0d0
+                            !tau_5=0.0d0
+                            !tau_6=0.0d0
+                            !tau_7=0.0d0
+                            !tau_8=0.0d0
+                            !tau_9=0.0d0
                             !$acc loop vector &
-                            !$acc reduction(+:grad_1,grad_2,grad_3,grad_4,grad_5,grad_6,grad_7,grad_8,grad_9,div_1,div_5,div_9)
+                            !$acc reduction(+:grad_1,grad_2,grad_3,grad_4,grad_5,grad_6,grad_7,grad_8,grad_9)
                             do inode = 1,nnode
                                grad_1 = grad_1+gpcar(1,inode,igaus,ielem)*u(ind(inode),1)
                                grad_2 = grad_2+gpcar(2,inode,igaus,ielem)*u(ind(inode),1)
@@ -229,33 +229,34 @@ module elem_diffu
                                grad_8 = grad_8+gpcar(2,inode,igaus,ielem)*u(ind(inode),3)
                                grad_9 = grad_9+gpcar(3,inode,igaus,ielem)*u(ind(inode),3)
 
-                               div_1 = div_1+gpcar(1,inode,igaus,ielem)*u(ind(inode),1)
-                               div_5 = div_5+gpcar(2,inode,igaus,ielem)*u(ind(inode),2)
-                               div_9 = div_9+gpcar(3,inode,igaus,ielem)*u(ind(inode),3)
+                               !div_1 = div_1+gpcar(1,inode,igaus,ielem)*u(ind(inode),1)
+                               !div_5 = div_5+gpcar(2,inode,igaus,ielem)*u(ind(inode),2)
+                               !div_9 = div_9+gpcar(3,inode,igaus,ielem)*u(ind(inode),3)
                             end do
+                            div_1 = grad_1+grad_5+grad_9
                             tmp1 = 0.0d0
                             tmp2 = 0.0d0
                             tmp3 = 0.0d0
                             !$acc loop vector reduction(+:tmp1,tmp2,tmp3)
                             do inode = 1,nnode
                                tau_1 = mu_e(ielem)*(grad_1+grad_1-twoThirds*div_1)
-                               tau_2 = mu_e(ielem)*(grad_2+grad_4-twoThirds*div_2)
-                               tau_3 = mu_e(ielem)*(grad_3+grad_7-twoThirds*div_3)
-                               tau_4 = mu_e(ielem)*(grad_4+grad_2-twoThirds*div_4)
-                               tau_5 = mu_e(ielem)*(grad_5+grad_5-twoThirds*div_5)
-                               tau_6 = mu_e(ielem)*(grad_6+grad_8-twoThirds*div_6)
-                               tau_7 = mu_e(ielem)*(grad_7+grad_3-twoThirds*div_7)
-                               tau_8 = mu_e(ielem)*(grad_8+grad_6-twoThirds*div_8)
-                               tau_9 = mu_e(ielem)*(grad_9+grad_9-twoThirds*div_9)
-                               tmp1 = tmp1+(gpvol(1,igaus,idime)*gpcar(1,inode,igaus,ielem)*tau_1)
-                               tmp1 = tmp1+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_2)
-                               tmp1 = tmp1+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_3)
-                               tmp2 = tmp2+(gpvol(1,igaus,idime)*gpcar(1,inode,igaus,ielem)*tau_4)
-                               tmp2 = tmp2+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_5)
-                               tmp2 = tmp2+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_6)
-                               tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(1,inode,igaus,ielem)*tau_7)
-                               tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(2,inode,igaus,ielem)*tau_8)
-                               tmp3 = tmp3+(gpvol(1,igaus,idime)*gpcar(3,inode,igaus,ielem)*tau_9)
+                               tau_2 = mu_e(ielem)*(grad_2+grad_4-twoThirds)
+                               tau_3 = mu_e(ielem)*(grad_3+grad_7-twoThirds)
+                               tau_4 = mu_e(ielem)*(grad_4+grad_2-twoThirds)
+                               tau_5 = mu_e(ielem)*(grad_5+grad_5-twoThirds*div_1)
+                               tau_6 = mu_e(ielem)*(grad_6+grad_8-twoThirds)
+                               tau_7 = mu_e(ielem)*(grad_7+grad_3-twoThirds)
+                               tau_8 = mu_e(ielem)*(grad_8+grad_6-twoThirds)
+                               tau_9 = mu_e(ielem)*(grad_9+grad_9-twoThirds*div_1)
+                               tmp1 = tmp1+(gpvol(1,igaus,ielem)*gpcar(1,inode,igaus,ielem)*tau_1)
+                               tmp1 = tmp1+(gpvol(1,igaus,ielem)*gpcar(2,inode,igaus,ielem)*tau_2)
+                               tmp1 = tmp1+(gpvol(1,igaus,ielem)*gpcar(3,inode,igaus,ielem)*tau_3)
+                               tmp2 = tmp2+(gpvol(1,igaus,ielem)*gpcar(1,inode,igaus,ielem)*tau_4)
+                               tmp2 = tmp2+(gpvol(1,igaus,ielem)*gpcar(2,inode,igaus,ielem)*tau_5)
+                               tmp2 = tmp2+(gpvol(1,igaus,ielem)*gpcar(3,inode,igaus,ielem)*tau_6)
+                               tmp3 = tmp3+(gpvol(1,igaus,ielem)*gpcar(1,inode,igaus,ielem)*tau_7)
+                               tmp3 = tmp3+(gpvol(1,igaus,ielem)*gpcar(2,inode,igaus,ielem)*tau_8)
+                               tmp3 = tmp3+(gpvol(1,igaus,ielem)*gpcar(3,inode,igaus,ielem)*tau_9)
                             end do
                             !$acc loop vector
                             do inode = 1,nnode
