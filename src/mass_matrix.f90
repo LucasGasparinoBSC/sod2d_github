@@ -151,7 +151,7 @@ module mass_matrix
 
               end subroutine lumped_mass
 
-              subroutine cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,Rmc,weight)
+              subroutine cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,Rmc)
 
                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                       ! Forms Mc as a sparse CSR matrix, utilizing nzdom, rdom and cdom to          !
@@ -161,37 +161,22 @@ module mass_matrix
 
                       implicit none
 
-                      integer(4), intent(in)           :: nelem, nnode, npoin, ngaus
-                      integer(4), intent(in)           :: connec(nelem,nnode)
-                      real(8),    intent(in)           :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode), v(npoin)
-                      real(8),    intent(in), optional :: weight(npoin)
-                      real(8),    intent(out)          :: Rmc(npoin)
-                      integer(4)                       :: ielem, igaus, inode, ind(nnode)
-                      real(8)                          :: Re(nnode), tmp1, tmp2
-                      real(8)                          :: wtmp(npoin)
+                      integer(4), intent(in)  :: nelem, nnode, npoin, ngaus
+                      integer(4), intent(in)  :: connec(nelem,nnode)
+                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode), v(npoin)
+                      real(8),    intent(out) :: Rmc(npoin)
+                      integer(4)              :: ielem, igaus, inode, ind(nnode)
+                      real(8)                 :: Re(nnode), tmp2
 
                       !
                       ! Initialize Mc to zeros
                       !
                       call nvtxStartRange("Cmass times vector")
-                      if(present(weight)) then
-                         !$acc kernels
-                         wtmp(:) = weight(:)
-                         !$acc end kernels
-                      else
-                         !$acc kernels
-                         wtmp(:) = 1.0d0
-                         !$acc end kernels
-                      end if
-
                       !$acc kernels
                       Rmc(:) = 0.0d0
                       !$acc end kernels
 
-                      !
-                      ! Loop over all elements to form Mc_e(nnode,nnode)
-                      !
-                      !$acc parallel loop gang private(ind,Re)
+                      !$acc parallel loop gang private(ind,Re) vector_length(32)
                       do ielem = 1,nelem
                          !$acc loop vector
                          do inode = 1,nnode
@@ -203,7 +188,67 @@ module mass_matrix
                          !
                          !$acc loop seq
                          do igaus = 1,ngaus ! Loop over Gauss points
-                            tmp1 = dot_product(Ngp(igaus,:),wtmp(ind))
+                            tmp2 = dot_product(Ngp(igaus,:),v(ind))
+                            !$acc loop vector
+                            do inode = 1,nnode ! Loop over element nodes (row)
+                               Re(inode) = Re(inode)+gpvol(1,igaus,ielem)* &
+                                           Ngp(igaus,inode)*tmp2
+                            end do
+                         end do
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            !$acc atomic update
+                            Rmc(ind(inode)) = Rmc(ind(inode))+Re(inode)
+                            !$acc end atomic
+                         end do
+                      end do
+                      !$acc end parallel loop
+                      call nvtxEndRange
+
+              end subroutine cmass_times_vector
+
+              subroutine wcmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,Rmc,weight)
+
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      ! Forms Mc as a sparse CSR matrix, utilizing nzdom, rdom and cdom to          !
+                      ! compress the elemental matrices into the full sparse assembly structure.    !
+                      ! Mc is defined by A{int(Na*Nb*det(Je))}, where A{} is the assembly operator. !
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                      implicit none
+
+                      integer(4), intent(in)  :: nelem, nnode, npoin, ngaus
+                      integer(4), intent(in)  :: connec(nelem,nnode)
+                      real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ngp(ngaus,nnode), v(npoin)
+                      real(8),    intent(in)  :: weight(npoin)
+                      real(8),    intent(out) :: Rmc(npoin)
+                      integer(4)              :: ielem, igaus, inode, ind(nnode)
+                      real(8)                 :: Re(nnode), tmp1, tmp2
+
+                      !
+                      ! Initialize Mc to zeros
+                      !
+                      call nvtxStartRange("Cmass times vector")
+                      !$acc kernels
+                      Rmc(:) = 0.0d0
+                      !$acc end kernels
+
+                      !
+                      ! Loop over all elements to form Mc_e(nnode,nnode)
+                      !
+                      !$acc parallel loop gang private(ind,Re) vector_length(32)
+                      do ielem = 1,nelem
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode) ! get elemental indices
+                         end do
+                         !
+                         ! Form Re with Gaussian quadrature (open)
+                         !
+                         !$acc loop seq
+                         do igaus = 1,ngaus ! Loop over Gauss points
+                            tmp1 = dot_product(Ngp(igaus,:),weight(ind))
                             tmp2 = dot_product(Ngp(igaus,:),v(ind))
                             !$acc loop vector
                             do inode = 1,nnode ! Loop over element nodes (row)
@@ -222,6 +267,6 @@ module mass_matrix
                       !$acc end parallel loop
                       call nvtxEndRange
 
-              end subroutine cmass_times_vector
+              end subroutine wcmass_times_vector
 
 end module mass_matrix

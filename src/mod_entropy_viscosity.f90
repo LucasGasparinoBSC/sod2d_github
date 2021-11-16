@@ -37,9 +37,8 @@ module mod_entropy_viscosity
                        !
                        call nvtxStartRange("Entropy transport")
                        !$acc kernels
-                       eta = (rhok(:)/(gamma_gas-1.0d0))*log(prk(:)/(rhok(:)**gamma_gas))
-                       eta_p = (rho(:,1)/(gamma_gas-1.0d0))*log(pr(:,1)/(rho(:,1)**gamma_gas))
-                       alpha(:) = eta(:)/rhok(:)
+                       eta(:) = (rhok(:)/(gamma_gas-1.0d0))*log(prk(:)/(rhok(:)**gamma_gas))
+                       eta_p(:) = (rho(:,1)/(gamma_gas-1.0d0))*log(pr(:,1)/(rho(:,1)**gamma_gas))
                        !$acc end kernels
                        do idime = 1,ndime
                           !$acc kernels
@@ -54,11 +53,13 @@ module mod_entropy_viscosity
                        !$acc kernels
                        R1(:) = (eta_p(:)-eta(:))/dt  ! Temporal entropy
                        Reta(:) = 0.0d0
+                       alpha(:) = 1.0d0
                        !$acc end kernels
                        !
                        ! Entropy residual
                        !
-                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,f_eta,Reta)
+                       call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He, &
+                                                  gpvol,f_eta,Reta,alpha)
                        !
                        ! Alter Reta with inv(Mc)
                        !
@@ -77,11 +78,12 @@ module mod_entropy_viscosity
                        !
                        !$acc kernels
                        R2(:) = (rho(:,1)-rhok(:))/dt
+                       alpha(:) = eta(:)/rhok(:)
                        !$acc end kernels
                        !
                        ! Alter R2 with Mcw
                        !
-                       call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,R2,aux1,alpha)
+                       call wcmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,R2,aux1,alpha)
                        !
                        ! Compute weighted mass convec
                        !
