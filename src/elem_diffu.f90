@@ -22,12 +22,12 @@ module elem_diffu
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: Re(nnode), nu_e
-                      real(8)                 :: tmp1, tmp2, tmp3, gpcar(ndime,nnode)
+                      real(8)                 :: tmp1, gpcar(ndime,nnode)
 
+                      call nvtxStartRange("Mass diffusion")
                       !$acc kernels
                       Rmass(:) = 0.0d0
                       !$acc end kernels
-                      call nvtxStartRange("Mass diffusion")
                       !$acc parallel loop gang private(ind,gpcar,Re) vector_length(32)
                       do ielem = 1,nelem
                          !$acc loop vector
@@ -38,17 +38,18 @@ module elem_diffu
                          nu_e = mu_e(ielem)/maxval(abs(rho(ind)))
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            !$acc loop seq
+                            !$acc loop vector collapse(2)
                             do idime = 1,ndime
-                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
+                            end do
+                            !$acc loop seq
+                            do idime = 1,ndime
                                tmp1 = dot_product(gpcar(idime,:),rho(ind))
-                               !$acc loop vector
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)* &
-                                     nu_e*gpcar(idime,inode)*tmp1
+                                              nu_e*gpcar(idime,inode)*tmp1
                                end do
                             end do
                          end do
@@ -142,13 +143,20 @@ module elem_diffu
                       real(8) :: tmp1, tmp2, tmp3
 
                       twoThirds = 2.0d0/3.0d0
+                      call nvtxStartRange("Momentum diffusion")
                       !$acc kernels
                       Rmom(:,:) = 0.0d0
                       !$acc end kernels
-                      call nvtxStartRange("Momentum diffusion")
                       !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            ind(inode) = connec(ielem,inode)
+                            !$acc loop seq
+                            do idime = 1,ndime
+                               Re(inode,idimee) = 0.0d0
+                            end do
+                         end do
                          ind = connec(ielem,:)
                          !
                          ! Gradient structure:
@@ -263,17 +271,18 @@ module elem_diffu
                       integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: Re(nnode), kappa_e
                       real(8)                 :: el_u(nnode,ndime), el_Tem(nnode), el_Ke(nnode)
-                      !real(8)                 :: grad_T(ndime,ngaus), grad_Ke(ndime,ngaus)
-                      real(8)                 :: gradT, gradKe, tmp1, tmp2, tmp3
+                      real(8)                 :: gradT, gradKe, gpcar(ndime,nnode)
 
+                      call nvtxStartRange("Energy diffusion")
                       !$acc kernels
                       Rener(:) = 0.0d0
                       !$acc end kernels
-                      call nvtxStartRange("Energy diffusion")
-                      !$acc parallel loop gang private(ind,el_Ke,Re) vector_length(32)
+                      !$acc parallel loop gang private(ind,el_Ke,Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode)
+                         end do
                          kappa_e = mu_e(ielem)*1004.0d0/0.72d0 ! Fixed Cp and Pr
                          !kappa_e = mu_e(ielem)/(1.40d0-1.0d0)
                          !
@@ -285,23 +294,20 @@ module elem_diffu
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            gradT = 0.0d0
-                            gradKe = 0.0d0
-                            tmp3 = 0.0d0
+                            !$acc loop vector collapse(2)
+                            do idime = 1,ndime
+                               do inode = 1,nnode
+                                  gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
+                               end do
+                            end do
                             !$acc loop seq
                             do idime = 1,ndime
-                               !$acc loop seq
-                               do jdime = 1,ndime
-                                  tmp1 = dot_product(dNgp(jdime,:,igaus),Tem(ind))
-                                  tmp2 = dot_product(dNgp(jdime,:,igaus),el_Ke(:))
-                                  gradT = gradT + He(idime,jdime,igaus,ielem)*tmp1
-                                  gradKe = gradKe + He(idime,jdime,igaus,ielem)*tmp2
-                                  !$acc loop vector reduction(+:tmp3)
-                                  do inode = 1,nnode
-                                     tmp3 = tmp3+He(idime,jdime,igaus,ielem)*dNgp(jdime,inode,igaus)
-                                     Re(inode) = Re(inode) + gpvol(1,igaus,ielem)* &
-                                                 tmp3*(kappa_e*tmp1+mu_e(ielem)*tmp2)
-                                  end do
+                               gradT = dot_product(gpcar(idime,:),Tem(ind))
+                               gradKe = dot_product(gpcar(idime,:),el_Ke(:))
+                               !$acc loop vector
+                               do inode = 1,nnode
+                                  Re(inode) = Re(inode)+gpvol(1,igaus,ielem)* &
+                                     gpcar(idime,inode)*(kappa_e*gradT+mu_e(ielem)*gradKe)
                                end do
                             end do
                          end do
