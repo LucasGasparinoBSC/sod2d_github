@@ -20,35 +20,35 @@ module elem_diffu
                       real(8),    intent(in)  :: rho(npoin), mu_e(nelem)
                       real(8),    intent(out) :: Rmass(npoin)
                       integer(4)              :: ind(nnode)
-                      integer(4)              :: ielem, igaus, inode, jnode, idime, jdime
+                      integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: Re(nnode), nu_e
-                      real(8)                 :: tmp1, tmp2, tmp3
+                      real(8)                 :: tmp1, tmp2, tmp3, gpcar(ndime,nnode)
 
                       !$acc kernels
                       Rmass(:) = 0.0d0
                       !$acc end kernels
                       call nvtxStartRange("Mass diffusion")
-                      !$acc parallel loop gang private(ind,Re) vector_length(32)
+                      !$acc parallel loop gang private(ind,gpcar,Re) vector_length(32)
                       do ielem = 1,nelem
-                         Re = 0.0d0
-                         ind = connec(ielem,:)
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode)
+                         end do
                          nu_e = mu_e(ielem)/maxval(abs(rho(ind)))
                          !$acc loop seq
                          do igaus = 1,ngaus
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp2 = 0.0d0
-                               tmp3 = 0.0d0
-                               !$acc loop seq
-                               do jdime = 1,ndime
-                                  tmp1 = dot_product(dNgp(jdime,:,igaus),rho(ind))
-                                  tmp2 = tmp2+He(idime,jdime,igaus,ielem)*tmp1
-                                  !$acc loop vector reduction(+:tmp3)
-                                  do inode = 1,nnode
-                                     tmp3 = tmp3+He(idime,jdime,igaus,ielem)*dNgp(jdime,inode,igaus)
-                                     Re(inode) = Re(inode) + gpvol(1,igaus,ielem) * &
-                                                       tmp3*tmp2
-                                  end do
+                               !$acc loop vector
+                               do inode = 1,nnode
+                                  gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
+                               end do
+                               tmp1 = dot_product(gpcar(idime,:),rho(ind))
+                               !$acc loop vector
+                               do inode = 1,nnode
+                                  Re(inode) = Re(inode)+gpvol(1,igaus,ielem)* &
+                                     nu_e*gpcar(idime,inode)*tmp1
                                end do
                             end do
                          end do
@@ -81,56 +81,27 @@ module elem_diffu
               !!old        real(8),    intent(in)  :: u(npoin,ndime), mu_e(nelem)
               !!old        real(8),    intent(out) :: Rmom(npoin,ndime)
               !!old        integer(4)              :: ind(nnode)
-              !!old        integer(4)              :: ielem, igaus, idime, jdime, inode, jnode, kdime
-              !!old        real(8)                 :: Re(nnode,ndime), aux(ndime,ngaus), tau(ndime,ndime,ngaus)
-              !!old        real(8)                 :: el_u(nnode,ndime), grad_u(ndime,ndime,ngaus), div_u(ndime,ndime,ngaus)
+              !!old        integer(4)              :: ielem, igaus, idime, jdime, inode, kdime
+              !!old        real(8)                 :: Re(nnode,ndime)
 
-              !!old        Rmom = 0.0d0
+              !!old        !$acc kernels
+              !!old        Rmom(:,:) = 0.0d0
+              !!old        !$acc end kernels
               !!old        call nvtxStartRange("Momentum diffusion")
+              !!old        !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
               !!old        do ielem = 1,nelem
-              !!old           Re = 0.0d0
-              !!old           ind = connec(ielem,:)
-              !!old           el_u(1:nnode,1:ndime) = u(ind,1:ndime)
-              !!old           grad_u = 0.0d0
-              !!old           div_u = 0.0d0
+              !!old           !$acc loop vector
+              !!old           do inode = 1,nnode
+              !!old              Re(inode,:) = 0.0d0
+              !!old              ind(inode) = connec(ielem,inode)
+              !!old           end do
+              !!old           !$acc loop seq
               !!old           do igaus = 1,ngaus
+              !!old              !$acc loop seq
               !!old              do idime = 1,ndime
-              !!old                 !
-              !!old                 ! grad_u
-              !!old                 !
-              !!old                 do jnode = 1,nnode
-              !!old                    do jdime = 1,ndime
-              !!old                       grad_u(idime,jdime,igaus) = grad_u(idime,jdime,igaus) + &
-              !!old                               gpcar(jdime,jnode,igaus,ielem)*el_u(jnode,idime)
-              !!old                    end do
-              !!old                 end do
-              !!old                 !
-              !!old                 ! div_u
-              !!old                 !
-              !!old                 do jnode = 1,nnode
-              !!old                    do kdime = 1,ndime
-              !!old                       div_u(idime,idime,igaus) = div_u(idime,idime,igaus) + &
-              !!old                               gpcar(kdime,jnode,igaus,ielem)*el_u(jnode,kdime)
-              !!old                    end do
-              !!old                 end do
-              !!old                 !
-              !!old                 ! tau_ij = grad_u + grad_u^T - (2/3)*div_u
-              !!old                 !
-              !!old                 do jdime = 1,ndime
-              !!old                    tau(idime,jdime,igaus) = 1.0d0*mu_e(ielem)*(grad_u(idime,jdime,igaus) + &
-              !!old                            grad_u(jdime,idime,igaus) - &
-              !!old                            (2.0d0/3.0d0)*div_u(idime,jdime,igaus))
-              !!old                 end do
-              !!old              end do
-              !!old              !
-              !!old              ! div(tau)
-              !!old              !
-              !!old              do idime = 1,ndime
+              !!old                 !$acc loop vector
               !!old                 do inode = 1,nnode
-              !!old                    do jdime = 1,ndime
-              !!old                       Re(inode,idime) = Re(inode,idime)+gpvol(1,igaus,ielem) * &
-              !!old                               gpcar(jdime,inode,igaus,ielem)*tau(idime,jdime,igaus)
-              !!old                    end do
+              !!old                    gpcar(idime,inode) = dot_product(He(idime,:.igaus,ielem),dNgp(:,inode,igaus))
               !!old                 end do
               !!old              end do
               !!old           end do
@@ -141,6 +112,7 @@ module elem_diffu
               !!old              Rmom(ind,idime) = Rmom(ind,idime)+Re(1:nnode,idime)
               !!old           end do
               !!old        end do
+              !!old        !$acc end parallel loop
               !!old        call nvtxEndRange
 
               !!oldend subroutine mom_diffusion
@@ -163,23 +135,28 @@ module elem_diffu
                       real(8),    intent(out) :: Rmom(npoin,ndime)
                       integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode, kdime
-                      real(8)                  :: Re(nnode,ndime), twoThirds
-
+                      real(8)                 :: Re(nnode,ndime), twoThirds, gpcar(ndime,nnode)
                       real(8) :: grad_1, grad_2, grad_3, grad_4, grad_5, grad_6, grad_7, grad_8, grad_9
-                      real(8) :: gradc_1, gradc_2, gradc_3, gradc_4, gradc_5, gradc_6, gradc_7, gradc_8, gradc_9
-                      real(8) :: div_1, div_2, div_3, div_4, div_5, div_6, div_7, div_8, div_9
+                      real(8) :: div_1
                       real(8) :: tau_1, tau_2, tau_3, tau_4, tau_5, tau_6, tau_7, tau_8, tau_9
-                      real(8) :: tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9
+                      real(8) :: tmp1, tmp2, tmp3
 
                       twoThirds = 2.0d0/3.0d0
                       !$acc kernels
                       Rmom(:,:) = 0.0d0
                       !$acc end kernels
                       call nvtxStartRange("Momentum diffusion")
-                      !$acc parallel loop gang private(ind,Re) vector_length(32)
+                      !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
                          Re = 0.0d0
                          ind = connec(ielem,:)
+                         !
+                         ! Gradient structure:
+                         !
+                         !         | u1,1 u1,2 u1,3 |
+                         ! u_i,j = | u2,1 u2,2 u2,3 |
+                         !         | u3,1 u3,2 u3,3 |
+                         !
                          !$acc loop seq
                          do igaus = 1,ngaus
                             grad_1=0.0d0
@@ -191,73 +168,62 @@ module elem_diffu
                             grad_7=0.0d0
                             grad_8=0.0d0
                             grad_9=0.0d0
-                            div_1=0.0d0
-                            div_2=0.0d0
-                            div_3=0.0d0
-                            div_4=0.0d0
-                            div_5=0.0d0
-                            div_6=0.0d0
-                            div_7=0.0d0
-                            div_8=0.0d0
-                            div_9=0.0d0
-                            tau_1=0.0d0
-                            tau_2=0.0d0
-                            tau_3=0.0d0
-                            tau_4=0.0d0
-                            tau_5=0.0d0
-                            tau_6=0.0d0
-                            tau_7=0.0d0
-                            tau_8=0.0d0
-                            tau_9=0.0d0
+                            !$acc loop vector collapse(2)
+                            do idime = 1,ndime
+                               do inode = 1,nnode
+                                  gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
+                               end do
+                            end do
+                            !
+                            ! compute dN_b,j*u_bi @ Gauss point k
+                            !
                             !$acc loop vector &
                             !$acc reduction(+:grad_1,grad_2,grad_3,grad_4,grad_5,grad_6,grad_7,grad_8,grad_9)
                             do inode = 1,nnode
-                               grad_1 = grad_1+dNgp(1,inode,igaus)*u(ind(inode),1)
-                               grad_2 = grad_2+dNgp(2,inode,igaus)*u(ind(inode),1)
-                               grad_3 = grad_3+dNgp(3,inode,igaus)*u(ind(inode),1)
-                               grad_4 = grad_4+dNgp(1,inode,igaus)*u(ind(inode),2)
-                               grad_5 = grad_5+dNgp(2,inode,igaus)*u(ind(inode),2)
-                               grad_6 = grad_6+dNgp(3,inode,igaus)*u(ind(inode),2)
-                               grad_7 = grad_7+dNgp(1,inode,igaus)*u(ind(inode),3)
-                               grad_8 = grad_8+dNgp(2,inode,igaus)*u(ind(inode),3)
-                               grad_9 = grad_9+dNgp(3,inode,igaus)*u(ind(inode),3)
+                               grad_1 = grad_1+gpcar(1,inode)*u(ind(inode),1)
+                               grad_2 = grad_2+gpcar(2,inode)*u(ind(inode),1)
+                               grad_3 = grad_3+gpcar(3,inode)*u(ind(inode),1)
+                               grad_4 = grad_4+gpcar(1,inode)*u(ind(inode),2)
+                               grad_5 = grad_5+gpcar(2,inode)*u(ind(inode),2)
+                               grad_6 = grad_6+gpcar(3,inode)*u(ind(inode),2)
+                               grad_7 = grad_7+gpcar(1,inode)*u(ind(inode),3)
+                               grad_8 = grad_8+gpcar(2,inode)*u(ind(inode),3)
+                               grad_9 = grad_9+gpcar(3,inode)*u(ind(inode),3)
                             end do
-                            gradc_1 = He(1,1,igaus,ielem)*grad_1+He(1,2,igaus,ielem)*grad_4+He(1,3,igaus,ielem)*grad_7
-                            gradc_2 = He(1,1,igaus,ielem)*grad_2+He(1,2,igaus,ielem)*grad_5+He(1,3,igaus,ielem)*grad_8
-                            gradc_3 = He(1,1,igaus,ielem)*grad_3+He(1,2,igaus,ielem)*grad_6+He(1,3,igaus,ielem)*grad_9
-                            gradc_4 = He(2,1,igaus,ielem)*grad_1+He(2,2,igaus,ielem)*grad_4+He(2,3,igaus,ielem)*grad_7
-                            gradc_5 = He(2,1,igaus,ielem)*grad_2+He(2,2,igaus,ielem)*grad_5+He(2,3,igaus,ielem)*grad_8
-                            gradc_6 = He(2,1,igaus,ielem)*grad_3+He(2,2,igaus,ielem)*grad_6+He(2,3,igaus,ielem)*grad_9
-                            gradc_7 = He(3,1,igaus,ielem)*grad_1+He(3,2,igaus,ielem)*grad_4+He(3,3,igaus,ielem)*grad_7
-                            gradc_8 = He(3,1,igaus,ielem)*grad_2+He(3,2,igaus,ielem)*grad_5+He(3,3,igaus,ielem)*grad_8
-                            gradc_9 = He(3,1,igaus,ielem)*grad_3+He(3,2,igaus,ielem)*grad_6+He(3,3,igaus,ielem)*grad_9
-                            div_1 = He(1,1,igaus,ielem)*grad_1+He(2,2,igaus,ielem)*grad_5+He(3,3,igaus,ielem)*grad_9
-                            div_5 = div_1
-                            div_9 = div_1
+                            div_1 = grad_1+grad_5+grad_9 ! u_k,k = tr[grad(u)]
+                            !
+                            ! Compute tau_ij = mu*(u_i,j+u_j,i-(2/3)*u_k,k*d_ij)
+                            !
+                            tau_1 = mu_e(ielem)*(grad_1+grad_1-twoThirds*div_1)
+                            tau_2 = mu_e(ielem)*(grad_2+grad_4)
+                            tau_3 = mu_e(ielem)*(grad_3+grad_7)
+                            tau_4 = mu_e(ielem)*(grad_4+grad_2)
+                            tau_5 = mu_e(ielem)*(grad_5+grad_5-twoThirds*div_1)
+                            tau_6 = mu_e(ielem)*(grad_6+grad_8)
+                            tau_7 = mu_e(ielem)*(grad_7+grad_3)
+                            tau_8 = mu_e(ielem)*(grad_8+grad_6)
+                            tau_9 = mu_e(ielem)*(grad_9+grad_9-twoThirds*div_1)
+                            !
+                            ! Compute N_a,j*tau_ij @ Gauss point k
+                            !
                             tmp1 = 0.0d0
                             tmp2 = 0.0d0
                             tmp3 = 0.0d0
                             !$acc loop vector reduction(+:tmp1,tmp2,tmp3)
                             do inode = 1,nnode
-                               tau_1 = mu_e(ielem)*(grad_1+grad_1-twoThirds*div_1)
-                               tau_2 = mu_e(ielem)*(grad_2+grad_4-twoThirds*div_2)
-                               tau_3 = mu_e(ielem)*(grad_3+grad_7-twoThirds*div_3)
-                               tau_4 = mu_e(ielem)*(grad_4+grad_2-twoThirds*div_4)
-                               tau_5 = mu_e(ielem)*(grad_5+grad_5-twoThirds*div_5)
-                               tau_6 = mu_e(ielem)*(grad_6+grad_8-twoThirds*div_6)
-                               tau_7 = mu_e(ielem)*(grad_7+grad_3-twoThirds*div_7)
-                               tau_8 = mu_e(ielem)*(grad_8+grad_6-twoThirds*div_8)
-                               tau_9 = mu_e(ielem)*(grad_9+grad_9-twoThirds*div_9)
-                               tmp1 = tmp1+(gpvol(1,igaus,idime)*He(1,1,igaus,ielem)*dNgp(1,inode,igaus)*tau_1)
-                               tmp1 = tmp1+(gpvol(1,igaus,idime)*He(1,2,igaus,ielem)*dNgp(2,inode,igaus)*tau_2)
-                               tmp1 = tmp1+(gpvol(1,igaus,idime)*He(1,3,igaus,ielem)*dNgp(3,inode,igaus)*tau_3)
-                               tmp2 = tmp1+(gpvol(1,igaus,idime)*He(2,1,igaus,ielem)*dNgp(1,inode,igaus)*tau_4)
-                               tmp2 = tmp1+(gpvol(1,igaus,idime)*He(2,2,igaus,ielem)*dNgp(2,inode,igaus)*tau_5)
-                               tmp2 = tmp1+(gpvol(1,igaus,idime)*He(2,3,igaus,ielem)*dNgp(3,inode,igaus)*tau_6)
-                               tmp3 = tmp1+(gpvol(1,igaus,idime)*He(3,1,igaus,ielem)*dNgp(1,inode,igaus)*tau_7)
-                               tmp3 = tmp1+(gpvol(1,igaus,idime)*He(3,2,igaus,ielem)*dNgp(2,inode,igaus)*tau_8)
-                               tmp3 = tmp1+(gpvol(1,igaus,idime)*He(3,3,igaus,ielem)*dNgp(3,inode,igaus)*tau_9)
+                               tmp1 = tmp1+(gpvol(1,igaus,ielem)*gpcar(1,inode)*tau_1)
+                               tmp1 = tmp1+(gpvol(1,igaus,ielem)*gpcar(2,inode)*tau_2)
+                               tmp1 = tmp1+(gpvol(1,igaus,ielem)*gpcar(3,inode)*tau_3)
+                               tmp2 = tmp1+(gpvol(1,igaus,ielem)*gpcar(1,inode)*tau_4)
+                               tmp2 = tmp1+(gpvol(1,igaus,ielem)*gpcar(2,inode)*tau_5)
+                               tmp2 = tmp1+(gpvol(1,igaus,ielem)*gpcar(3,inode)*tau_6)
+                               tmp3 = tmp1+(gpvol(1,igaus,ielem)*gpcar(1,inode)*tau_7)
+                               tmp3 = tmp1+(gpvol(1,igaus,ielem)*gpcar(2,inode)*tau_8)
+                               tmp3 = tmp1+(gpvol(1,igaus,ielem)*gpcar(3,inode)*tau_9)
                             end do
+                            !
+                            ! Gaussian quadrature
+                            !
                             !$acc loop vector
                             do inode = 1,nnode
                                Re(inode,1) = Re(inode,1)+tmp1
@@ -265,6 +231,9 @@ module elem_diffu
                                Re(inode,3) = Re(inode,3)+tmp3
                             end do
                          end do
+                         !
+                         ! Assembly
+                         !
                          !$acc loop vector collapse(2)
                          do inode = 1,nnode
                             do idime = 1,ndime

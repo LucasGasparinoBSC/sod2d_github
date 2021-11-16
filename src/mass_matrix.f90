@@ -193,11 +193,14 @@ module mass_matrix
                       !
                       !$acc parallel loop gang private(ind,Re)
                       do ielem = 1,nelem
-                         ind(1:nnode) = connec(ielem,1:nnode) ! get elemental indices
+                         !$acc loop vector
+                         do inode = 1,nnode
+                            Re(inode) = 0.0d0
+                            ind(inode) = connec(ielem,inode) ! get elemental indices
+                         end do
                          !
                          ! Form Re with Gaussian quadrature (open)
                          !
-                         Re = 0.0d0
                          !$acc loop seq
                          do igaus = 1,ngaus ! Loop over Gauss points
                             tmp1 = dot_product(Ngp(igaus,:),wtmp(ind))
