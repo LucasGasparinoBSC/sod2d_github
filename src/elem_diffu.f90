@@ -38,8 +38,9 @@ module elem_diffu
                          nu_e = mu_e(ielem)/maxval(abs(rho(ind)))
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            !$acc loop vector collapse(2)
+                            !$acc loop seq
                             do idime = 1,ndime
+                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
@@ -176,8 +177,9 @@ module elem_diffu
                             grad_7=0.0d0
                             grad_8=0.0d0
                             grad_9=0.0d0
-                            !$acc loop vector collapse(2)
+                            !$acc loop seq
                             do idime = 1,ndime
+                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
@@ -291,8 +293,9 @@ module elem_diffu
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            !$acc loop vector collapse(2)
+                            !$acc loop seq
                             do idime = 1,ndime
+                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
