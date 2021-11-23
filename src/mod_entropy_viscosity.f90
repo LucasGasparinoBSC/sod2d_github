@@ -118,7 +118,7 @@ module mod_entropy_viscosity
                       integer(4)              :: ielem, ind(nnode), inode
                       real(8)                 :: R1, R2, Ve, ue(nnode,ndime), rhoe(nnode), pre(nnode)
                       real(8)                 :: uabs, c_sound, betae
-                      real(8)                 :: L3
+                      real(8)                 :: L3, aux
 
                       !$acc parallel loop gang private(ind)
                       do ielem = 1,nelem
@@ -136,16 +136,18 @@ module mod_entropy_viscosity
                          !
                          ! Max. Wavespeed at element
                          !
-                         !$acc loop vector reduction(max:L3)
+                         aux = 0.0d0
+                         !$acc loop vector reduction(max:aux)
                          do inode = 1,nnode
                             uabs = sqrt(dot_product(u(ind(inode),:),u(ind(inode),:))) ! Velocity mag. at element node
                             c_sound = sqrt(gamma_gas*pr(ind(inode))/rho(ind(inode)))     ! Speed of sound at node
                             L3 = abs(uabs+c_sound)                          ! L3 wavespeed
+                            aux = max(aux,L3)
                          end do
                          !
                          ! Select against Upwind viscosity
                          !
-                         betae = 0.5d0*helem(ielem)*L3
+                         betae = 0.5d0*helem(ielem)*aux
                          mu_e(ielem) = maxval(abs(rho(ind)))*min(Ve,betae) ! Dynamic viscosity
                          !mu_e(ielem) = betae
                       end do
