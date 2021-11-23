@@ -128,8 +128,8 @@ module mod_entropy_viscosity
                          ind = connec(ielem,:)             ! Element indexes
                          R1 = maxval(abs(Reta(ind)))       ! Linf norm of Reta on element
                          R2 = maxval(abs(Rrho(ind)))       ! Linf norm of Rrho on element
-                         !Ve = max(R1,R2)*(helem(ielem)**2) ! Normalized residual for element
-                         Ve = R1*(helem(ielem)**2) ! Normalized residual for element
+                         Ve = max(R1,R2)*(helem(ielem)**2) ! Normalized residual for element
+                         !Ve = R1*(helem(ielem)**2) ! Normalized residual for element
                          !ue = u(ind,:)                     ! Element velocities
                          !rhoe = rho(ind)                   ! Element density
                          !pre = pr(ind)                     ! Element pressure
