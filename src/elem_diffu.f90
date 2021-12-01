@@ -248,7 +248,7 @@ module elem_diffu
                          do inode = 1,nnode
                             do idime = 1,ndime
                                !$acc atomic update
-                               Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+0.0d0*Re(inode,idime)
+                               Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+1.0d0*Re(inode,idime)
                                !$acc end atomic
                             end do
                          end do
@@ -314,7 +314,7 @@ module elem_diffu
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rener(ind(inode)) = Rener(ind(inode))+1.0d0*Re(inode)
+                            Rener(ind(inode)) = Rener(ind(inode))+0.0d0*Re(inode)
                             !$acc end atomic
                          end do
                       end do
