@@ -50,8 +50,9 @@ module elem_convec
                          !$acc loop seq
                          do igaus = 1,ngaus
                             tmp1 = 0.0d0
-                            !$acc loop vector collapse(2)
+                            !$acc loop seq
                             do idime = 1,ndime
+                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
@@ -120,8 +121,9 @@ module elem_convec
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            !$acc loop vector collapse(2)
+                            !$acc loop seq
                             do idime = 1,ndime
+                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
@@ -195,8 +197,9 @@ module elem_convec
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            !$acc loop vector collapse(2)
+                            !$acc loop seq
                             do idime = 1,ndime
+                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
@@ -256,8 +259,9 @@ module elem_convec
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
-                            !$acc loop vector collapse(2)
+                            !$acc loop seq
                             do idime = 1,ndime
+                               !$acc loop vector
                                do inode = 1,nnode
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
