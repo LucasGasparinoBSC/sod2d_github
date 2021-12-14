@@ -58,7 +58,7 @@ module elem_diffu
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rmass(ind(inode)) = Rmass(ind(inode))+nu_e*0.0d0*Re(inode)
+                            Rmass(ind(inode)) = Rmass(ind(inode))+nu_e*1.0d0*Re(inode)
                             !$acc end atomic
                          end do
                       end do
@@ -264,7 +264,7 @@ module elem_diffu
 
                       integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime
                       integer(4), intent(in)  :: connec(nelem,nnode)
-                      real(8),    intent(in)  :: Ngp(ngaus,nnode), dNgp(idime,inode,igaus)
+                      real(8),    intent(in)  :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
                       real(8),    intent(in)  :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: u(npoin,ndime), Tem(npoin), mu_e(nelem)
@@ -314,7 +314,7 @@ module elem_diffu
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rener(ind(inode)) = Rener(ind(inode))+0.0d0*Re(inode)
+                            Rener(ind(inode)) = Rener(ind(inode))+1.0d0*Re(inode)
                             !$acc end atomic
                          end do
                       end do
