@@ -281,6 +281,7 @@ module elem_diffu
                       !$acc end kernels
                       !$acc parallel loop gang private(ind,el_Ke,Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
+                         !$acc loop vector
                          do inode = 1,nnode
                             Re(inode) = 0.0d0
                             ind(inode) = connec(ielem,inode)
