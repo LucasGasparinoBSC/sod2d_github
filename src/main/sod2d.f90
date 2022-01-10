@@ -66,15 +66,15 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! Element order
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 100 ! TODO: Needs to be input...
+        nstep = 200 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
         dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
-        nsave = 100 ! First step to save
-        nleap = 100 ! Saving interval
+        nsave = 200 ! First step to save
+        nleap = 200 ! Saving interval
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -387,7 +387,7 @@ program sod2d
         allocate(gpvol(1,ngaus,nelem))
         !allocate(dxN(ndime,nnode))
 
-        !$acc parallel loop gang
+        !$acc parallel loop gang vector_length(32)
         do ielem = 1,nelem
            !if (ndime == 2) then
            !   elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
