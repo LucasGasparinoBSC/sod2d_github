@@ -37,7 +37,7 @@ program sod2d
         integer(4)                 :: isPeriodic, npoin_orig
         !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
-        integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), aux1(:)
+        integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), lpoin(:), aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
         real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
@@ -78,7 +78,7 @@ program sod2d
         nleap = 200 ! Saving interval
         isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
-           nper = 1 ! TODO: if periodic, request number of periodic nodes
+           nper = 3 ! TODO: if periodic, request number of periodic nodes
         end if
 
         !*********************************************************************!
@@ -119,7 +119,21 @@ program sod2d
            npoin_orig = npoin
            npoin = npoin-nper
            write(*,*) "--| NUMBER OF WORKING POINTS: ", npoin
+           ! TODO: Fix this shite
+           allocate(lpoin(npoin))
+           allocate(aux1(npoin_orig))
+           do ipoin = 1,npoin_orig
+              do iper = 1,nper
+                 if (ipoin .ne. masSla(iper,2)) then
+                    aux1(ipoin) = ipoin
+                 else
+                    aux1(ipoin) = 0
+                 end if
+              end do
+              print*, aux1(ipoin)
+           end do
         end if
+        deallocate(aux1)
         call nvtxEndRange
         STOP(1)
 
