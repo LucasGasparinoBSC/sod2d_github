@@ -26,17 +26,18 @@ program sod2d
 
         implicit none
 
-        integer(4)                 :: ndime, nnode, ngaus, nstep!, nzdom
-        integer(4)                 :: idime, inode, igaus, istep!, izdom
+        integer(4)                 :: ndime, nnode, ngaus, nstep, nper!, nzdom
+        integer(4)                 :: idime, inode, igaus, istep, iper!, izdom
         integer(4)                 :: nelem, npoin, nboun, npbou, nbcodes
         integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
         integer(4)                 :: ppow, porder
         integer(4)                 :: flag_predic
         integer(4)                 :: nsave, nleap
+        integer(4)                 :: isPeriodic, npoin_orig
         !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
-        integer(4), allocatable    :: aux1(:)
+        integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
         real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
@@ -75,6 +76,10 @@ program sod2d
         dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
         nsave = 200 ! First step to save
         nleap = 200 ! Saving interval
+        isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
+        if (isPeriodic == 1) then
+           nper = 1 ! TODO: if periodic, request number of periodic nodes
+        end if
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -93,7 +98,30 @@ program sod2d
         allocate(coord(npoin,ndime))
         call read_geo_dat(file_path,file_name,npoin,nelem,nboun,nnode,ndime,npbou,connec,bound,coord)
         call read_fixbou(file_path,file_name,nboun,nbcodes,bou_codes)
+        if (isPeriodic == 1) then
+           allocate(masSla(nper,2))
+           allocate(connec_orig(nelem,nnode))
+           call read_periodic(file_path,file_name,nper,masSla)
+           connec_orig(:,:) = connec(:,:)
+           !$acc parallel loop gang
+           do ielem = 1,nelem
+              !$acc loop vector
+              do inode = 1,nnode
+                 !$acc loop seq
+                 do iper = 1,nper
+                    if (connec(ielem,inode) == masSla(iper,2)) then
+                       connec(ielem,inode) = masSla(iper,1)
+                    end if
+                 end do
+              end do
+           end do
+           !$acc end parallel loop
+           npoin_orig = npoin
+           npoin = npoin-nper
+           write(*,*) "--| NUMBER OF WORKING POINTS: ", npoin
+        end if
         call nvtxEndRange
+        STOP(1)
 
         !*********************************************************************!
         ! Compute characteristic size of elements                             !

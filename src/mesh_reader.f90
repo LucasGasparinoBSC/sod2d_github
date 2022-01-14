@@ -114,4 +114,26 @@ module mesh_reader
 
          end subroutine read_fixbou
 
+         subroutine read_periodic(file_path,file_name,nper,masSla)
+
+            implicit none
+
+            character(500), intent(in)  :: file_path, file_name
+            integer(4)    , intent(in)  :: nper
+            integer(4)    , intent(out) :: masSla(nper,2)
+            integer(4)                  :: ii
+            character(500)              :: file_type, line
+
+            write(file_type,*) ".per"
+            
+            write(*,*) "--| READING PERIODICITY FILE..."
+            open(99,file=trim(adjustl(file_path))//trim(adjustl(file_name))//trim(adjustl(file_type)),status="old")
+
+            do ii = 1,nper
+               read(99,*) masSla(ii,1), masSla(ii,2)
+            end do
+            write(*,*) "--| TOTAL PERIODIC NODES : ",nper
+
+         end subroutine read_periodic
+
 end module mesh_reader
