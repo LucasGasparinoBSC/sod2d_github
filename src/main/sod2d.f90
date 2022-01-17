@@ -122,18 +122,29 @@ program sod2d
            ! TODO: Fix this shite
            allocate(lpoin(npoin))
            allocate(aux1(npoin_orig))
+           !$acc parallel loop
            do ipoin = 1,npoin_orig
-              do iper = 1,nper
-                 if (ipoin .ne. masSla(iper,2)) then
-                    aux1(ipoin) = ipoin
-                 else
+              aux1(ipoin) = ipoin
+           end do
+           !$acc end parallel loop
+           do iper = 1,nper
+              do ipoin = 1,npoin_orig
+                 if (masSla(iper,2) .eq. ipoin) then
                     aux1(ipoin) = 0
+                    exit
                  end if
               end do
-              print*, aux1(ipoin)
            end do
+           counter = 0
+           do ipoin = 1,npoin_orig
+              if (aux1(ipoin) .ne. 0) then
+                 counter = counter+1
+                 lpoin(counter) = aux1(ipoin)
+                 write(*,*) counter, lpoin(counter)
+              end if
+           end do
+           deallocate(aux1)
         end if
-        deallocate(aux1)
         call nvtxEndRange
         STOP(1)
 
