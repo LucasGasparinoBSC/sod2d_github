@@ -3,7 +3,7 @@ module jacobian_oper
         contains
 
                 subroutine elem_jacobian(ndime,nnode,elcod,dN,detJe,He)
-                   !$acc routine seq
+                   !!$acc routine seq
 
                         ! Computes the Jacobian transformation of an element, its determinant and
                         ! inverse. Valid for 2D and 3D elements. 3D uses cofactor method to obtain
@@ -83,7 +83,7 @@ module jacobian_oper
                 end subroutine
 
                 subroutine cartesian_deriv(ndime,nnode,dN,He,dxN)
-                   !$acc routine seq
+                   !!$acc routine seq
 
                         ! Pass the isopar. derivatives to cartesian space.
 

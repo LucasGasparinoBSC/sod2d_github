@@ -21,6 +21,7 @@ program sod2d
         !use mod_graph
         use mod_geom
         use mod_output
+        use mod_period
 
         use time_integ
 
@@ -37,7 +38,7 @@ program sod2d
         integer(4)                 :: isPeriodic, npoin_orig
         !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
-        integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), lpoin(:), aux1(:)
+        integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
         real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
@@ -67,16 +68,16 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! Element order
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 200 ! TODO: Needs to be input...
+        nstep = 1 ! TODO: Needs to be input...
         Rgas = 287.00d0
         !Rgas = 1.00d0
         Cp = 1004.00d0
         gamma_gas = 1.40d0
         Cv = Cp/gamma_gas
         dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
-        nsave = 200 ! First step to save
-        nleap = 200 ! Saving interval
-        isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
+        nsave = 1 ! First step to save
+        nleap = 1 ! Saving interval
+        isPeriodic = 0 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
            nper = 3 ! TODO: if periodic, request number of periodic nodes
         end if
@@ -93,60 +94,19 @@ program sod2d
         write(file_name,*) "shock_tube" ! NVVP
         call read_dims(file_path,file_name,npoin,nelem,nboun)
         allocate(connec(nelem,nnode))
-        allocate(bound(nboun,npbou))
-        allocate(bou_codes(nboun,2))
+        if (nboun .ne. 0) then
+           allocate(bound(nboun,npbou))
+           allocate(bou_codes(nboun,2))
+           call read_fixbou(file_path,file_name,nboun,nbcodes,bou_codes)
+        end if
         allocate(coord(npoin,ndime))
         call read_geo_dat(file_path,file_name,npoin,nelem,nboun,nnode,ndime,npbou,connec,bound,coord)
-        call read_fixbou(file_path,file_name,nboun,nbcodes,bou_codes)
         if (isPeriodic == 1) then
            allocate(masSla(nper,2))
            allocate(connec_orig(nelem,nnode))
            call read_periodic(file_path,file_name,nper,masSla)
-           connec_orig(:,:) = connec(:,:)
-           !$acc parallel loop gang
-           do ielem = 1,nelem
-              !$acc loop vector
-              do inode = 1,nnode
-                 !$acc loop seq
-                 do iper = 1,nper
-                    if (connec(ielem,inode) == masSla(iper,2)) then
-                       connec(ielem,inode) = masSla(iper,1)
-                    end if
-                 end do
-              end do
-           end do
-           !$acc end parallel loop
-           npoin_orig = npoin
-           npoin = npoin-nper
-           write(*,*) "--| NUMBER OF WORKING POINTS: ", npoin
-           ! TODO: Fix this shite
-           allocate(lpoin(npoin))
-           allocate(aux1(npoin_orig))
-           !$acc parallel loop
-           do ipoin = 1,npoin_orig
-              aux1(ipoin) = ipoin
-           end do
-           !$acc end parallel loop
-           do iper = 1,nper
-              do ipoin = 1,npoin_orig
-                 if (masSla(iper,2) .eq. ipoin) then
-                    aux1(ipoin) = 0
-                    exit
-                 end if
-              end do
-           end do
-           counter = 0
-           do ipoin = 1,npoin_orig
-              if (aux1(ipoin) .ne. 0) then
-                 counter = counter+1
-                 lpoin(counter) = aux1(ipoin)
-                 write(*,*) counter, lpoin(counter)
-              end if
-           end do
-           deallocate(aux1)
         end if
         call nvtxEndRange
-        STOP(1)
 
         !*********************************************************************!
         ! Compute characteristic size of elements                             !
@@ -192,23 +152,6 @@ program sod2d
         end do
         !$acc end parallel loop
 
-        !
-        ! Zero aux1 entries that belong to a boundary
-        !
-        !!$acc parallel loop collapse(2)
-        !!do ipoin = 1,npoin       ! Loop over all nodes to fill aux()
-        !!   do iboun = 1,nboun    ! Loop over element edges belonging to a boundary
-        !!      !!$acc loop seq
-        !!      do ipbou = 1,npbou ! Loop over nodes on an element face belonging to a boundary
-        !!         if (bound(iboun,ipbou) == ipoin) then
-        !!            aux1(ipoin) = 0
-        !!            exit
-        !!         end if
-        !!      end do
-        !!   end do
-        !!end do
-        !!$acc end parallel loop
-        !
         !$acc parallel loop gang
         do iboun = 1,nboun
            !$acc loop vector
@@ -309,9 +252,17 @@ program sod2d
         !
         write(*,*) "--| GENERATING 1st OUTPUT..."
         call nvtxStartRange("1st write")
-        call write_vtk_ascii(0,ndime,npoin,nelem,nnode,coord,connec, &
+        call write_vtk_binary(0,ndime,npoin,nelem,nnode,coord,connec, &
                              rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
         call nvtxEndRange
+
+        !*********************************************************************!
+        ! Treat periodicity                                                   !
+        !*********************************************************************!
+        
+        if (isPeriodic == 1) then
+           STOP(1)
+        end if
 
         !*********************************************************************!
         ! Generate GLL table                                                  !
@@ -395,7 +346,7 @@ program sod2d
         !allocate(N(nnode),dN(ndime,nnode))
         allocate(Ngp(ngaus,nnode),dNgp(ndime,nnode,ngaus))
 
-        !$acc parallel loop
+        !!$acc parallel loop
         do igaus = 1,ngaus
            s = xgp(igaus,1)
            t = xgp(igaus,2)
@@ -421,7 +372,7 @@ program sod2d
            !Ngp(igaus,:) = N
            !dNgp(:,:,igaus) = dN
         end do
-        !$acc end parallel loop
+        !!$acc end parallel loop
         call nvtxEndRange
 
         !*********************************************************************!
@@ -440,7 +391,7 @@ program sod2d
         allocate(gpvol(1,ngaus,nelem))
         !allocate(dxN(ndime,nnode))
 
-        !$acc parallel loop gang vector_length(32)
+        !!$acc parallel loop gang vector_length(32)
         do ielem = 1,nelem
            !if (ndime == 2) then
            !   elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
@@ -450,7 +401,7 @@ program sod2d
            !   elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
            !   elcod(3,1:nnode) = coord(connec(ielem,1:nnode),3)
            !end if
-           !$acc loop vector
+           !!$acc loop vector
            do igaus = 1,ngaus
               !dN = dNgp(:,:,igaus)
               call elem_jacobian(ndime,nnode,coord(connec(ielem,1:nnode),:),dNgp(:,:,igaus),detJe,He(:,:,igaus,ielem))
@@ -462,8 +413,7 @@ program sod2d
               gpvol(1,igaus,ielem) = wgp(igaus)*detJe
            end do
         end do
-        !$acc end parallel loop
-        !deallocate(He)
+        !!$acc end parallel loop
         call  nvtxEndRange
 
         !*********************************************************************!
@@ -602,7 +552,7 @@ program sod2d
            !
            if (istep == nsave) then
               call nvtxStartRange("Output "//timeStep,istep)
-              call write_vtk_ascii(counter,ndime,npoin,nelem,nnode,coord,connec, &
+              call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec, &
                                    rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
               nsave = nsave+nleap
               call nvtxEndRange
