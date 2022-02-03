@@ -1,9 +1,9 @@
 program sod2d
 
-        !*********************************************************************!
-        ! Computes the sod shock tube problem over a 2D domain using FEM.     !
-        ! Stabilized through Entropy viscosity method.                        !
-        !*********************************************************************!
+        !**************************************************************************!
+        ! Computes a 2D or 3D compressible flow problem by the Galerkin FE method. !
+        ! Stabilized through Entropy viscosity method.                             !
+        !**************************************************************************!
 
         use mod_nvtx
 #ifdef GPU
@@ -18,11 +18,10 @@ program sod2d
         use mesh_reader
         use inicond_reader
         use mass_matrix
-        !use mod_graph
+        !use mod_graph ! Only useful if CSR model is being used
         use mod_geom
         use mod_output
         use mod_period
-
         use time_integ
 
         implicit none
@@ -36,14 +35,13 @@ program sod2d
         integer(4)                 :: flag_predic
         integer(4)                 :: nsave, nleap
         integer(4)                 :: isPeriodic, npoin_orig
-        !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:)
+        !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:) ! Use with CSR matrices
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
         integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), aux1(:)
         real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
         real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
         real(8),    allocatable    :: Je(:,:), He(:,:,:,:)
-        !real(8),    allocatable    :: struc_J(:,:,:,:), struc_H(:,:,:,:), struc_detJ(:,:,:)
         real(8),    allocatable    :: gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
         real(8),    allocatable    :: Ml(:)!, Mc(:)
@@ -64,19 +62,18 @@ program sod2d
 
         write(*,*) "--| ENTER PROBLEM DIMENSION (2 OR 3) :"
         !read(*,*) ndime
-        ndime = 3 ! NVVP
+        ndime = 3 ! Nsys
         nnode = 27 ! TODO: need to allow for mixed elements...
-        porder = 2 ! Element order
+        porder = 2 ! TODO: make it input
         npbou = 9 ! TODO: Need to get his from somewhere...
         nstep = 1 ! TODO: Needs to be input...
-        Rgas = 287.00d0
-        !Rgas = 1.00d0
-        Cp = 1004.00d0
-        gamma_gas = 1.40d0
+        Rgas = 287.00d0 ! TODO: Make it input
+        Cp = 1004.00d0 ! TODO: Make it input
+        gamma_gas = 1.40d0 ! TODO: Make it innput
         Cv = Cp/gamma_gas
         dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
-        nsave = 1 ! First step to save
-        nleap = 1 ! Saving interval
+        nsave = 1 ! First step to save, TODO: input
+        nleap = 1 ! Saving interval, TODO: input
         isPeriodic = 0 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
            nper = 3 ! TODO: if periodic, request number of periodic nodes
@@ -91,7 +88,7 @@ program sod2d
         write(*,*) "--| ENTER NAME OF MESH RELATED FILES :"
         call nvtxStartRange("Read mesh")
         !read(*,*) file_name
-        write(file_name,*) "shock_tube" ! NVVP
+        write(file_name,*) "shock_tube" ! Nsys
         call read_dims(file_path,file_name,npoin,nelem,nboun)
         allocate(connec(nelem,nnode))
         if (nboun .ne. 0) then
@@ -152,7 +149,10 @@ program sod2d
         end do
         !$acc end parallel loop
 
-        !$acc parallel loop gang
+        !
+        ! If node is on boundary, zero corresponding aux1 entry
+        !
+        !$acc parallel loop gang vector_length(32)
         do iboun = 1,nboun
            !$acc loop vector
            do ipbou = 1,npbou
@@ -171,8 +171,8 @@ program sod2d
            end if
         end do
 
-        nbnodes = ndof
-        ndof = npoin-ndof
+        nbnodes = ndof    ! Nodes on boundaries
+        ndof = npoin-ndof ! Free nodes
         write(*,*) '--| TOTAL FREE NODES := ',ndof
         write(*,*) '--| TOTAL BOUNDARY NODES := ',nbnodes
 
@@ -243,26 +243,18 @@ program sod2d
         end do
         !$acc end parallel loop
         !$acc kernels
-        mu_e(:) = 0.0d0
+        mu_e(:) = 0.0d0 ! Element viscosity, will use Sutherland law for generic case
         !$acc end kernels
         call nvtxEndRange
 
         !
-        ! Call VTK output
+        ! Call VTK output (0th step)
         !
         write(*,*) "--| GENERATING 1st OUTPUT..."
         call nvtxStartRange("1st write")
         call write_vtk_binary(0,ndime,npoin,nelem,nnode,coord,connec, &
                              rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
         call nvtxEndRange
-
-        !*********************************************************************!
-        ! Treat periodicity                                                   !
-        !*********************************************************************!
-        
-        if (isPeriodic == 1) then
-           STOP(1)
-        end if
 
         !*********************************************************************!
         ! Generate GLL table                                                  !
@@ -343,10 +335,8 @@ program sod2d
         write(*,*) "--| GENERATING SHAPE FUNCTIONS AND ISOPAR. DERIVATIVES..."
         call nvtxStartRange("N and dN")
 
-        !allocate(N(nnode),dN(ndime,nnode))
         allocate(Ngp(ngaus,nnode),dNgp(ndime,nnode,ngaus))
 
-        !!$acc parallel loop
         do igaus = 1,ngaus
            s = xgp(igaus,1)
            t = xgp(igaus,2)
@@ -369,52 +359,39 @@ program sod2d
               else
               end if
            end if
-           !Ngp(igaus,:) = N
-           !dNgp(:,:,igaus) = dN
         end do
-        !!$acc end parallel loop
         call nvtxEndRange
 
         !*********************************************************************!
         ! Generate Jacobian related information                               !
         !*********************************************************************!
 
+        ! TODO: create as a subroutine
+        
         write(*,*) "--| GENERATING JACOBIAN RELATED INFORMATION..."
 
         call nvtxStartRange("Jacobian info")
-        !allocate(elcod(ndime,nnode))
-        !allocate(Je(ndime,ndime))
         allocate(He(ndime,ndime,ngaus,nelem))
-        !allocate(struc_J(ndime,ndime,ngaus,nelem))
-        !allocate(struc_H(ndime,ndime,ngaus,nelem))
-        !allocate(struc_detJ(1,ngaus,nelem))
         allocate(gpvol(1,ngaus,nelem))
-        !allocate(dxN(ndime,nnode))
 
         !!$acc parallel loop gang vector_length(32)
         do ielem = 1,nelem
-           !if (ndime == 2) then
-           !   elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
-           !   elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
-           !else if (ndime == 3) then
-           !   elcod(1,1:nnode) = coord(connec(ielem,1:nnode),1)
-           !   elcod(2,1:nnode) = coord(connec(ielem,1:nnode),2)
-           !   elcod(3,1:nnode) = coord(connec(ielem,1:nnode),3)
-           !end if
            !!$acc loop vector
            do igaus = 1,ngaus
-              !dN = dNgp(:,:,igaus)
               call elem_jacobian(ndime,nnode,coord(connec(ielem,1:nnode),:),dNgp(:,:,igaus),detJe,He(:,:,igaus,ielem))
-              !struc_J(:,:,igaus,ielem) = Je
-              !struc_detJ(1,igaus,ielem) = detJe
-              !struc_H(:,:,igaus,ielem) = He
-              !call cartesian_deriv(ndime,nnode,dNgp(:,:,igaus),He,gpcar(:,:,igaus,ielem))
-              !gpcar(:,:,igaus,ielem) = dxN(:,:)
               gpvol(1,igaus,ielem) = wgp(igaus)*detJe
            end do
         end do
         !!$acc end parallel loop
         call  nvtxEndRange
+
+        !*********************************************************************!
+        ! Treat periodicity                                                   !
+        !*********************************************************************!
+        
+        if (isPeriodic == 1) then
+           STOP(1)
+        end if
 
         !*********************************************************************!
         ! Compute mass matrix (Lumped and Consistent) and set solver type     !
@@ -427,17 +404,20 @@ program sod2d
         solver_type = 'LUMSO'
         call nvtxEndRange
 
+        !
+        ! Consisten mass: activate with CSR related operations
+        !
         !write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
         !allocate(Mc(nzdom))
         !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
         !read(*,*) solver_type
-        write(solver_type,'(a)') "APINV" ! NVVP
+        write(solver_type,'(a)') "APINV" ! Nsys
         if (solver_type == 'APINV') then
                 write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
                 !read(*,*) ppow
-                ppow = 2 ! NVVP
+                ppow = 2 ! Nsys
         end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 

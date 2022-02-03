@@ -4,7 +4,6 @@ module elem_hex
 
       subroutine hex08(xi,eta,zeta,N,dN) ! HEX08 element     
 
-         !!$acc routine seq
          implicit none
          
          real(8), intent(in)  :: xi, eta, zeta
@@ -64,7 +63,6 @@ module elem_hex
       
       subroutine hex27(xi,eta,zeta,N,dN) ! HEX27 element
 
-         !!$acc routine seq
          implicit none
          
          real(8), intent(in)  :: xi, eta, zeta
