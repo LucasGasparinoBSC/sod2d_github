@@ -2,28 +2,37 @@ module mod_period
 
    contains
 
-      subroutine periodic_ops(nelem,npoin,npoin_orig,nnode,nper,lpoin,connec,connec_orig,masSla)
+      subroutine periodic_ops(nelem,npoin,nboun,npbou,npoin_orig,nnode,nper, &
+                              lpoin_w,connec,connec_orig,masSla,bound,bound_orig)
 
          implicit none
 
-         integer(4), intent(in)               :: nelem, nnode, nper, masSla(nper,2)
+         integer(4), intent(in)               :: nelem, nnode, nboun, npbou, nper, masSla(nper,2)
          integer(4), intent(out)              :: npoin_orig, connec_orig(nelem,nnode)
          integer(4), intent(inout)            :: npoin, connec(nelem,nnode)
-         integer(4), allocatable, intent(out) :: lpoin(:)
-         integer(4)                           :: ielem, inode, ipoin, iper, counter
+         integer(4), optional, intent(out)    :: bound_orig(nboun,npbou)
+         integer(4), optional, intent(inout)  :: bound(nboun,npbou)
+         integer(4), allocatable, intent(out) :: lpoin_w(:)
+         integer(4)                           :: ielem, inode, iboun, ipbou, ipoin, iper, counter
          integer(4), allocatable              :: aux1(:)
 
          !
-         ! Copy connec to dummy
+         ! Copy connec and bound to dummy
          !
          !$acc kernels
          connec_orig(:,:) = connec(:,:)
          !$acc end kernels
+         
+         if(present(bound) .and. present(bound_orig)) then
+            !$acc kernels
+            bound_orig(:,:) = bound(:,:)
+            !$acc end kernels
+         end if
 
          !
          ! Modify connec with Master/Slave relations
          !
-         !$acc parallel loop gang
+         !$acc parallel loop gang vector_length(32)
          do ielem = 1,nelem
             !$acc loop vector
             do inode = 1,nnode
@@ -38,6 +47,25 @@ module mod_period
          !$acc end parallel loop
 
          !
+         ! Modify bound with Master/Slave relations
+         !
+         if(present(bound)) then
+            !$acc parallel loop gang
+            do iboun = 1,nboun
+               !$acc loop vector
+               do ipbou = 1,npbou
+                  !$acc loop seq
+                  do iper = 1,nper
+                     if (bound(iboun,ipbou) .eq. masSla(iper,2)) then
+                        bound(iboun,ipbou) = masSla(iper,1)
+                     end if
+                  end do
+               end do
+            end do
+            !$acc end parallel loop
+         end if
+
+         !
          ! Recompute npoin without periodic nodes
          !
          npoin_orig = npoin
@@ -47,7 +75,7 @@ module mod_period
          ! Create list of working nodes (exclude slaves from list)
          !
          allocate(aux1(npoin_orig))
-         allocate(lpoin(npoin))
+         allocate(lpoin_w(npoin))
 
          !$acc parallel loop
          do ipoin = 1,npoin_orig
@@ -68,7 +96,7 @@ module mod_period
          do ipoin = 1,npoin_orig
             if (aux1(ipoin) .ne. 0) then
                counter = counter+1
-               lpoin(counter) = aux1(ipoin)
+               lpoin_w(counter) = aux1(ipoin)
             end if
          end do
          deallocate(aux1)

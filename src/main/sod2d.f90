@@ -34,13 +34,15 @@ program sod2d
         integer(4)                 :: ppow, porder
         integer(4)                 :: flag_predic
         integer(4)                 :: nsave, nleap
+        integer(4)                 :: counter
         integer(4)                 :: isPeriodic, npoin_orig
         !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:) ! Use with CSR matrices
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
-        integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), aux1(:)
-        real(8),    allocatable    :: coord(:,:), elcod(:,:), helem(:)
+        integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), aux1(:), bound_orig(:,:)
+        integer(4), allocatable    :: lpoin_w(:)
+        real(8),    allocatable    :: coord(:,:), helem(:)
         real(8),    allocatable    :: xgp(:,:), wgp(:)
-        real(8),    allocatable    :: N(:), dN(:,:), Ngp(:,:), dNgp(:,:,:)
+        real(8),    allocatable    :: Ngp(:,:), dNgp(:,:,:)
         real(8),    allocatable    :: Je(:,:), He(:,:,:,:)
         real(8),    allocatable    :: gpvol(:,:,:)
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
@@ -53,8 +55,6 @@ program sod2d
         character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
         character(4)               :: timeStep
-
-        integer(4) :: counter
 
         !*********************************************************************!
         ! Basic data, hardcoded for now                                       !
@@ -74,7 +74,7 @@ program sod2d
         dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
         nsave = 1 ! First step to save, TODO: input
         nleap = 1 ! Saving interval, TODO: input
-        isPeriodic = 0 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
+        isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
            nper = 3 ! TODO: if periodic, request number of periodic nodes
         end if
@@ -101,6 +101,9 @@ program sod2d
         if (isPeriodic == 1) then
            allocate(masSla(nper,2))
            allocate(connec_orig(nelem,nnode))
+           if (nboun .ne. 0) then
+              allocate(bound_orig(nboun,npbou))
+           end if
            call read_periodic(file_path,file_name,nper,masSla)
         end if
         call nvtxEndRange
@@ -152,7 +155,7 @@ program sod2d
         !
         ! If node is on boundary, zero corresponding aux1 entry
         !
-        !$acc parallel loop gang vector_length(32)
+        !$acc parallel loop gang
         do iboun = 1,nboun
            !$acc loop vector
            do ipbou = 1,npbou
@@ -344,7 +347,7 @@ program sod2d
               if (nnode == 4) then
                  call qua04(s,t,Ngp(igaus,:),dNgp(:,:,igaus))
               else if (nnode == 9) then
-                 !call qua09(s,t,N,dN)
+                 !call qua09(s,t,Ngp(igaus,:),dNgp(:,:,igaus))
                  write(*,*) '--| NOT CODED YET!'
                  STOP 1
               end if
@@ -355,7 +358,7 @@ program sod2d
               else if (nnode == 27) then
                  call hex27(s,t,z,Ngp(igaus,:),dNgp(:,:,igaus))
               else if (nnode == 64) then
-                 !call hex64(s,t,z,N,dN)
+                 !call hex64(s,t,z,Ngp(igaus,:),dNgp(:,:,igaus))
               else
               end if
            end if
@@ -374,15 +377,12 @@ program sod2d
         allocate(He(ndime,ndime,ngaus,nelem))
         allocate(gpvol(1,ngaus,nelem))
 
-        !!$acc parallel loop gang vector_length(32)
         do ielem = 1,nelem
-           !!$acc loop vector
            do igaus = 1,ngaus
               call elem_jacobian(ndime,nnode,coord(connec(ielem,1:nnode),:),dNgp(:,:,igaus),detJe,He(:,:,igaus,ielem))
               gpvol(1,igaus,ielem) = wgp(igaus)*detJe
            end do
         end do
-        !!$acc end parallel loop
         call  nvtxEndRange
 
         !*********************************************************************!
@@ -390,8 +390,15 @@ program sod2d
         !*********************************************************************!
         
         if (isPeriodic == 1) then
-           STOP(1)
+           if (nboun .eq. 0) then
+              call periodic_ops(nelem,npoin,nboun,npbou,npoin_orig,nnode,nper, &
+                                lpoin_w,connec,connec_orig,masSla)
+           else
+              call periodic_ops(nelem,npoin,nboun,npbou,npoin_orig,nnode,nper, &
+                                lpoin_w,connec,connec_orig,masSla,bound,bound_orig)
+           end if
         end if
+        STOP(1)
 
         !*********************************************************************!
         ! Compute mass matrix (Lumped and Consistent) and set solver type     !
