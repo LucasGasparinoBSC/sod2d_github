@@ -35,7 +35,7 @@ program sod2d
         integer(4)                 :: flag_predic
         integer(4)                 :: nsave, nleap
         integer(4)                 :: counter
-        integer(4)                 :: isPeriodic, npoin_orig
+        integer(4)                 :: isPeriodic, npoin_w
         !integer(4), allocatable    :: rdom(:), cdom(:), aux_cdom(:) ! Use with CSR matrices
         integer(4), allocatable    :: connec(:,:), bound(:,:), ldof(:), lbnodes(:), bou_codes(:,:)
         integer(4), allocatable    :: masSla(:,:), connec_orig(:,:), aux1(:), bound_orig(:,:)
@@ -139,66 +139,68 @@ program sod2d
         ! Generate list of "free" nodes                                       !
         !*********************************************************************!
 
-        write(*,*) "--| SPLITTING BOUNDARY NODES FROM DOFs..."
-        call nvtxStartRange("Bnodes split")
-        allocate(aux1(npoin))
+        if (nboun .ne. 0) then
+            write(*,*) "--| SPLITTING BOUNDARY NODES FROM DOFs..."
+            call nvtxStartRange("Bnodes split")
+            allocate(aux1(npoin))
 
-        !
-        ! Fill aux1 with all nodes in order
-        !
-        !$acc parallel loop
-        do ipoin = 1,npoin
-           aux1(ipoin) = ipoin
-        end do
-        !$acc end parallel loop
+            !
+            ! Fill aux1 with all nodes in order
+            !
+            !$acc parallel loop
+            do ipoin = 1,npoin
+               aux1(ipoin) = ipoin
+            end do
+            !$acc end parallel loop
 
-        !
-        ! If node is on boundary, zero corresponding aux1 entry
-        !
-        !$acc parallel loop gang
-        do iboun = 1,nboun
-           !$acc loop vector
-           do ipbou = 1,npbou
-              aux1(bound(iboun,ipbou)) = 0
-           end do
-        end do
-        !$acc end parallel loop
+            !
+            ! If node is on boundary, zero corresponding aux1 entry
+            !
+            !$acc parallel loop gang
+            do iboun = 1,nboun
+               !$acc loop vector
+               do ipbou = 1,npbou
+                  aux1(bound(iboun,ipbou)) = 0
+               end do
+            end do
+            !$acc end parallel loop
 
-        !
-        ! Determine how many nodes are boundary nodes
-        !
-        ndof = 0
-        do ipoin = 1,npoin
-           if (aux1(ipoin) == 0) then
-              ndof = ndof+1
-           end if
-        end do
+            !
+            ! Determine how many nodes are boundary nodes
+            !
+            ndof = 0
+            do ipoin = 1,npoin
+               if (aux1(ipoin) == 0) then
+                  ndof = ndof+1
+               end if
+            end do
 
-        nbnodes = ndof    ! Nodes on boundaries
-        ndof = npoin-ndof ! Free nodes
-        write(*,*) '--| TOTAL FREE NODES := ',ndof
-        write(*,*) '--| TOTAL BOUNDARY NODES := ',nbnodes
+            nbnodes = ndof    ! Nodes on boundaries
+            ndof = npoin-ndof ! Free nodes
+            write(*,*) '--| TOTAL FREE NODES := ',ndof
+            write(*,*) '--| TOTAL BOUNDARY NODES := ',nbnodes
 
-        allocate(ldof(ndof))
-        allocate(lbnodes(nbnodes))
+            allocate(ldof(ndof))
+            allocate(lbnodes(nbnodes))
 
-        !
-        ! Split aux1 into the 2 lists
-        !
-        idof = 0    ! Counter for free nodes
-        ibnodes = 0 ! Counter for boundary nodes
-        !$acc parallel loop reduction(+:idof,ibnodes)
-        do ipoin = 1,npoin
-           if (aux1(ipoin) == 0) then
-              ibnodes = ibnodes+1
-              lbnodes(ibnodes) = ipoin
-           else
-              idof = idof+1
-              ldof(idof) = aux1(ipoin)
-           end if
-        end do
-        !$acc end parallel loop
-        call nvtxEndRange
+            !
+            ! Split aux1 into the 2 lists
+            !
+            idof = 0    ! Counter for free nodes
+            ibnodes = 0 ! Counter for boundary nodes
+            !$acc parallel loop reduction(+:idof,ibnodes)
+            do ipoin = 1,npoin
+               if (aux1(ipoin) == 0) then
+                  ibnodes = ibnodes+1
+                  lbnodes(ibnodes) = ipoin
+               else
+                  idof = idof+1
+                  ldof(idof) = aux1(ipoin)
+               end if
+            end do
+            !$acc end parallel loop
+            call nvtxEndRange
+        end if
 
         !*********************************************************************!
         ! Allocate variables                                                  !
@@ -391,12 +393,19 @@ program sod2d
         
         if (isPeriodic == 1) then
            if (nboun .eq. 0) then
-              call periodic_ops(nelem,npoin,nboun,npbou,npoin_orig,nnode,nper, &
+              call periodic_ops(nelem,npoin,nboun,npbou,npoin_w,nnode,nper, &
                                 lpoin_w,connec,connec_orig,masSla)
            else
-              call periodic_ops(nelem,npoin,nboun,npbou,npoin_orig,nnode,nper, &
+              call periodic_ops(nelem,npoin,nboun,npbou,npoin_w,nnode,nper, &
                                 lpoin_w,connec,connec_orig,masSla,bound,bound_orig)
            end if
+        else if (isPeriodic == 0) then
+           allocate(lpoin_w(npoin)) ! All nodes are working nodes
+           !$acc parallel loop
+           do ipoin = 1,npoin
+              lpoin_w(ipoin) = ipoin
+           end do
+           !$acc end parallel
         end if
         STOP(1)
 
@@ -406,8 +415,13 @@ program sod2d
 
         write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
         call nvtxStartRange("Lumped mass compute")
-        allocate(Ml(npoin))
-        call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
+        if (isPeriodic .eq. 1) then
+            allocate(Ml(npoin_w))
+            call lumped_mass(nelem,nnode,npoin_w,ngaus,connec,gpvol,Ngp,Ml)
+        else if (isPeriodic .eq. 0) then
+            allocate(Ml(npoin))
+            call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
+        end if
         solver_type = 'LUMSO'
         call nvtxEndRange
 
@@ -417,14 +431,18 @@ program sod2d
         !write(*,*) '--| COMPUTING CONSISTENT MASS MATRIX...'
         !allocate(Mc(nzdom))
         !call consistent_mass(nelem,nnode,npoin,ngaus,connec,nzdom,rdom,cdom,gpvol,Ngp,Mc)
+
+        !
+        ! Set solver type
+        !
         write(*,*) '--| ENTER REQUIRED SOLVER FOR MASS MATRIX:'
         write(*,*) '--| AVAILABLE SOLVERS ARE: LUMSO, APINV:'
         !read(*,*) solver_type
         write(solver_type,'(a)') "APINV" ! Nsys
         if (solver_type == 'APINV') then
-                write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
-                !read(*,*) ppow
-                ppow = 2 ! Nsys
+            write(*,*) '--| ENTER NUMBER OF ITERATIONS FOR APINV SOLVER:'
+            !read(*,*) ppow
+            ppow = 2 ! Nsys
         end if
         write(*,*) '--| USING SOLVER ',solver_type,' FOR MASS MATRIX'
 
@@ -494,60 +512,190 @@ program sod2d
         counter = 1
 
         call nvtxStartRange("Start RK4")
-        do istep = 1,nstep
+        if (isPeriodic .eq. 0) then ! Case is not periodic
+           if (nboun .eq. 0) then ! Case has no boundaries
+              write(*,*) '--| ERROR: CASE MUST HAVE BOUNDARIES!'
+              STOP(1)
+           else ! Case has boundaries
+              do istep = 1,nstep
 
-           write(*,*) '   --| STEP: ', istep
+                 write(*,*) '   --| STEP: ', istep
 
-           !
-           ! Prediction
-           !
-           flag_predic = 1
-           call nvtxStartRange("Init pred "//timeStep,istep)
-           !$acc kernels
-           rho(:,1) = rho(:,2)
-           u(:,:,1) = u(:,:,2)
-           q(:,:,1) = q(:,:,2)
-           pr(:,1) = pr(:,2)
-           E(:,1) = E(:,2)
-           Tem(:,1) = Tem(:,2)
-           e_int(:,1) = e_int(:,2)
-           !$acc end kernels
-           call nvtxEndRange
+                 !
+                 ! Prediction
+                 !
+                 flag_predic = 1
+                 call nvtxStartRange("Init pred "//timeStep,istep)
+                 !$acc kernels
+                 rho(:,1) = rho(:,2)
+                 u(:,:,1) = u(:,:,2)
+                 q(:,:,1) = q(:,:,2)
+                 pr(:,1) = pr(:,2)
+                 E(:,1) = E(:,2)
+                 Tem(:,1) = Tem(:,2)
+                 e_int(:,1) = e_int(:,2)
+                 !$acc end kernels
+                 call nvtxEndRange
 
-           ! nvtx range for full RK
-           write(timeStep,'(i4)') istep
-           call nvtxStartRange("RK4 step "//timeStep,istep)
+                 ! nvtx range for full RK
+                 write(timeStep,'(i4)') istep
+                 call nvtxStartRange("RK4 step "//timeStep,istep)
 
-           call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow,ldof,lbnodes,connec,bound,bou_codes, &
-                     Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
-                     rho,u,q,pr,E,Tem,e_int,mu_e)
+                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ngaus,nnode, &
+                           ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                           rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
+                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
 
-           !
-           ! Advance with entropy viscosity
-           !
-           flag_predic = 0
-           call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                     ppow,ldof,lbnodes,connec,bound,bou_codes, &
-                     Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
-                     rho,u,q,pr,E,Tem,e_int,mu_e)
+                 !
+                 ! Advance with entropy viscosity
+                 !
+                 flag_predic = 0
+                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ngaus,nnode, &
+                           ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                           rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
+                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
 
-           call nvtxEndRange
+                 call nvtxEndRange
 
-           !
-           ! Call VTK output
-           !
-           if (istep == nsave) then
-              call nvtxStartRange("Output "//timeStep,istep)
-              call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec, &
-                                   rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
-              nsave = nsave+nleap
-              call nvtxEndRange
+                 !
+                 ! Call VTK output
+                 !
+                 if (istep == nsave) then
+                    call nvtxStartRange("Output "//timeStep,istep)
+                    call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec, &
+                                         rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+                    nsave = nsave+nleap
+                    call nvtxEndRange
+                 end if
+
+                 counter = counter+1
+
+              end do
            end if
+        else if (isPeriodic .eq. 1) then ! Case is periodic
+           if (nboun .eq. 0) then ! Case has no boundaries
+               do istep = 1,nstep
 
-           counter = counter+1
+                  write(*,*) '   --| STEP: ', istep
 
-        end do
+                  !
+                  ! Prediction
+                  !
+                  flag_predic = 1
+                  call nvtxStartRange("Init pred "//timeStep,istep)
+                  !$acc kernels
+                  rho(:,1) = rho(:,2)
+                  u(:,:,1) = u(:,:,2)
+                  q(:,:,1) = q(:,:,2)
+                  pr(:,1) = pr(:,2)
+                  E(:,1) = E(:,2)
+                  Tem(:,1) = Tem(:,2)
+                  e_int(:,1) = e_int(:,2)
+                  !$acc end kernels
+                  call nvtxEndRange
+
+                  ! nvtx range for full RK
+                  write(timeStep,'(i4)') istep
+                  call nvtxStartRange("RK4 step "//timeStep,istep)
+
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
+                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
+                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
+                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
+                            e_int(lpoin_w(:),:),mu_e,lpoin_w)
+
+                  !
+                  ! Advance with entropy viscosity
+                  !
+                  flag_predic = 0
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
+                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
+                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
+                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
+                            e_int(lpoin_w(:),:),mu_e,lpoin_w)
+
+                  call nvtxEndRange
+
+                  !
+                  ! Call VTK output
+                  !
+                  if (istep == nsave) then
+                     call nvtxStartRange("Output "//timeStep,istep)
+                     call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
+                                          rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e, &
+                                          npoin_w,lpoin_w,connec_orig)
+                     nsave = nsave+nleap
+                     call nvtxEndRange
+                  end if
+
+                  counter = counter+1
+
+               end do
+            else
+               do istep = 1,nstep
+
+                  write(*,*) '   --| STEP: ', istep
+
+                  !
+                  ! Prediction
+                  !
+                  flag_predic = 1
+                  call nvtxStartRange("Init pred "//timeStep,istep)
+                  !$acc kernels
+                  rho(:,1) = rho(:,2)
+                  u(:,:,1) = u(:,:,2)
+                  q(:,:,1) = q(:,:,2)
+                  pr(:,1) = pr(:,2)
+                  E(:,1) = E(:,2)
+                  Tem(:,1) = Tem(:,2)
+                  e_int(:,1) = e_int(:,2)
+                  !$acc end kernels
+                  call nvtxEndRange
+
+                  ! nvtx range for full RK
+                  write(timeStep,'(i4)') istep
+                  call nvtxStartRange("RK4 step "//timeStep,istep)
+
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
+                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
+                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
+                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
+                            e_int(lpoin_w(:),:),mu_e,lpoin_w, &
+                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
+
+                  !
+                  ! Advance with entropy viscosity
+                  !
+                  flag_predic = 0
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
+                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
+                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
+                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
+                            e_int(lpoin_w(:),:),mu_e,lpoin_w, &
+                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
+
+                  call nvtxEndRange
+
+                  !
+                  ! Call VTK output
+                  !
+                  if (istep == nsave) then
+                     call nvtxStartRange("Output "//timeStep,istep)
+                     call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
+                                          rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e, &
+                     nsave = nsave+nleap
+                     call nvtxEndRange
+                  end if
+
+                  counter = counter+1
+
+               end do
+            end if
+        end if
         call nvtxEndRange
 
 end program sod2d

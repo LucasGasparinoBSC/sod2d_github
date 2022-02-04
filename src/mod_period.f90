@@ -2,14 +2,14 @@ module mod_period
 
    contains
 
-      subroutine periodic_ops(nelem,npoin,nboun,npbou,npoin_orig,nnode,nper, &
+      subroutine periodic_ops(nelem,npoin,nboun,npbou,npoin_w,nnode,nper, &
                               lpoin_w,connec,connec_orig,masSla,bound,bound_orig)
 
          implicit none
 
-         integer(4), intent(in)               :: nelem, nnode, nboun, npbou, nper, masSla(nper,2)
-         integer(4), intent(out)              :: npoin_orig, connec_orig(nelem,nnode)
-         integer(4), intent(inout)            :: npoin, connec(nelem,nnode)
+         integer(4), intent(in)               :: nelem, npoin, nnode, nboun, npbou, nper, masSla(nper,2)
+         integer(4), intent(out)              :: npoin_w, connec_orig(nelem,nnode)
+         integer(4), intent(inout)            :: connec(nelem,nnode)
          integer(4), optional, intent(out)    :: bound_orig(nboun,npbou)
          integer(4), optional, intent(inout)  :: bound(nboun,npbou)
          integer(4), allocatable, intent(out) :: lpoin_w(:)
@@ -66,25 +66,24 @@ module mod_period
          end if
 
          !
-         ! Recompute npoin without periodic nodes
+         ! Compute npoin_w (npoin without periodic nodes)
          !
-         npoin_orig = npoin
-         npoin = npoin-nper
+         npoin_w = npoin-nper
 
          !
          ! Create list of working nodes (exclude slaves from list)
          !
-         allocate(aux1(npoin_orig))
-         allocate(lpoin_w(npoin))
+         allocate(aux1(npoin))
+         allocate(lpoin_w(npoin_w))
 
          !$acc parallel loop
-         do ipoin = 1,npoin_orig
+         do ipoin = 1,npoin
             aux1(ipoin) = ipoin
          end do
          !$acc end parallel loop
          
          do iper = 1,nper
-            do ipoin = 1,npoin_orig
+            do ipoin = 1,npoin
                if (masSla(iper,2) .eq. ipoin) then
                   aux1(ipoin) = 0
                   exit
@@ -93,7 +92,7 @@ module mod_period
          end do
 
          counter = 0
-         do ipoin = 1,npoin_orig
+         do ipoin = 1,npoin
             if (aux1(ipoin) .ne. 0) then
                counter = counter+1
                lpoin_w(counter) = aux1(ipoin)

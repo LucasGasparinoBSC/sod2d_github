@@ -8,17 +8,16 @@ module time_integ
 
       contains
 
-              subroutine rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ndof,nbnodes,ngaus,nnode, &
-                              ppow,ldof,lbnodes,connec,bound,bou_codes, &
-                              Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
-                              rho,u,q,pr,E,Tem,e_int,mu_e)
+              subroutine rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ngaus,nnode, &
+                              ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                              rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
+                              ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
 
                       implicit none
 
                       integer(4), intent(in)             :: flag_predic
-                      integer(4), intent(in)             :: nelem, nboun, npbou, npoin, ndime, ngaus, nnode, ndof, nbnodes
-                      integer(4), intent(in)             :: ldof(ndof), lbnodes(nbnodes), connec(nelem,nnode)
-                      integer(4), intent(in)             :: bound(nboun,npbou), bou_codes(nboun,2)
+                      integer(4), intent(in)             :: nelem, nboun, npbou, npoin, ndime, ngaus, nnode
+                      integer(4), intent(in)             :: connec(nelem,nnode), lpoin_w(npoin)
                       integer(4), intent(in)             :: ppow
                       real(8),    intent(in)             :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
                       real(8),    intent(in)             :: He(ndime,ndime,ngaus,nelem)
@@ -34,6 +33,8 @@ module time_integ
                       real(8),    intent(inout)          :: Tem(npoin,2)
                       real(8),    intent(inout)          :: e_int(npoin,2)
                       real(8),    intent(out)            :: mu_e(nelem)
+                      integer(4), optional, intent(in)   :: ndof, nbnodes, ldof(ndof), lbnodes(nbnodes)
+                      integer(4), optional, intent(in)   :: bound(nboun,npbou), bou_codes(nboun,2)
                       integer(4)                         :: pos, bcode
                       integer(4)                         :: istep, ipoin, idof, idime, iboun, ipbou
                       real(8),    dimension(npoin)       :: rho_1, rho_2, rho_3, rho_4
