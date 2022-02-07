@@ -8,7 +8,7 @@ module time_integ
 
       contains
 
-              subroutine rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ngaus,nnode, &
+              subroutine rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                               ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                               rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
                               ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
@@ -17,7 +17,7 @@ module time_integ
 
                       integer(4), intent(in)             :: flag_predic
                       integer(4), intent(in)             :: nelem, nboun, npbou, npoin, ndime, ngaus, nnode
-                      integer(4), intent(in)             :: connec(nelem,nnode), lpoin_w(npoin)
+                      integer(4), intent(in)             :: connec(nelem,nnode), npoin_w, lpoin_w(npoin_w)
                       integer(4), intent(in)             :: ppow
                       real(8),    intent(in)             :: Ngp(ngaus,nnode), dNgp(ndime,nnode,ngaus)
                       real(8),    intent(in)             :: He(ndime,ndime,ngaus,nelem)
@@ -110,7 +110,7 @@ module time_integ
                          Rmass_1(:) = Rmass_1(:) + Rdiff_scal(:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rmass_1)
+                      call lumped_solver_scal(npoin_w,Ml,Rmass_1(lpoin_w(:)))
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
                       !$acc kernels

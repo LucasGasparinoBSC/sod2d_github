@@ -77,6 +77,8 @@ program sod2d
         isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
            nper = 3 ! TODO: if periodic, request number of periodic nodes
+        else if (isPeriodic == 0) then
+           nper = 0 ! Set periodic nodes to zero if case is not periodic
         end if
 
         !*********************************************************************!
@@ -257,8 +259,13 @@ program sod2d
         !
         write(*,*) "--| GENERATING 1st OUTPUT..."
         call nvtxStartRange("1st write")
-        call write_vtk_binary(0,ndime,npoin,nelem,nnode,coord,connec, &
-                             rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+        if (isPeriodic == 0) then
+           call write_vtk_binary(isPeriodic,0,ndime,npoin,nelem,nnode,coord,connec, &
+                                rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper)
+        else
+           call write_vtk_binary(isPeriodic,0,ndime,npoin,nelem,nnode,coord,connec, &
+                                rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper,masSla)
+        end if
         call nvtxEndRange
 
         !*********************************************************************!
@@ -404,6 +411,7 @@ program sod2d
            !$acc parallel loop
            do ipoin = 1,npoin
               lpoin_w(ipoin) = ipoin
+              npoin_w = npoin
            end do
            !$acc end parallel
         end if
@@ -541,7 +549,7 @@ program sod2d
                  write(timeStep,'(i4)') istep
                  call nvtxStartRange("RK4 step "//timeStep,istep)
 
-                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ngaus,nnode, &
+                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
@@ -550,7 +558,7 @@ program sod2d
                  ! Advance with entropy viscosity
                  !
                  flag_predic = 0
-                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,ndime,ngaus,nnode, &
+                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
@@ -562,8 +570,8 @@ program sod2d
                  !
                  if (istep == nsave) then
                     call nvtxStartRange("Output "//timeStep,istep)
-                    call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec, &
-                                         rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e)
+                    call write_vtk_binary(isPeriodic,counter,ndime,npoin,nelem,nnode,coord,connec, &
+                                         rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper)
                     nsave = nsave+nleap
                     call nvtxEndRange
                  end if
@@ -598,23 +606,17 @@ program sod2d
                   write(timeStep,'(i4)') istep
                   call nvtxStartRange("RK4 step "//timeStep,istep)
 
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
-                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
-                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
-                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
-                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
-                            e_int(lpoin_w(:),:),mu_e,lpoin_w)
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                           ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                           rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w)
 
                   !
                   ! Advance with entropy viscosity
                   !
                   flag_predic = 0
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
-                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
-                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
-                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
-                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
-                            e_int(lpoin_w(:),:),mu_e,lpoin_w)
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                           ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                           rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w)
 
                   call nvtxEndRange
 
@@ -623,9 +625,8 @@ program sod2d
                   !
                   if (istep == nsave) then
                      call nvtxStartRange("Output "//timeStep,istep)
-                     call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
-                                          rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e, &
-                                          npoin_w,lpoin_w,connec_orig)
+                     call write_vtk_binary(isPeriodic.counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
+                                          rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper,masSla)
                      nsave = nsave+nleap
                      call nvtxEndRange
                   end if
@@ -658,25 +659,19 @@ program sod2d
                   write(timeStep,'(i4)') istep
                   call nvtxStartRange("RK4 step "//timeStep,istep)
 
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
-                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
-                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
-                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
-                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
-                            e_int(lpoin_w(:),:),mu_e,lpoin_w, &
-                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                           ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                           rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
+                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
 
                   !
                   ! Advance with entropy viscosity
                   !
                   flag_predic = 0
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin_w,ndime,ngaus,nnode, &
-                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
-                            rho(lpoin_w(:),:),u(lpoin_w(:),:,:), &
-                            q(lpoin_w(:),:,:),pr(lpoin_w(:),:), &
-                            E(lpoin_w(:),:),Tem(lpoin_w(:),:), &
-                            e_int(lpoin_w(:),:),mu_e,lpoin_w, &
-                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
+                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                           ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
+                           rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
+                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
 
                   call nvtxEndRange
 
@@ -685,8 +680,8 @@ program sod2d
                   !
                   if (istep == nsave) then
                      call nvtxStartRange("Output "//timeStep,istep)
-                     call write_vtk_binary(counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
-                                          rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e, &
+                     call write_vtk_binary(isPeriodic,counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
+                                          rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper,masSla)
                      nsave = nsave+nleap
                      call nvtxEndRange
                   end if

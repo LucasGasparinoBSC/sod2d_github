@@ -140,24 +140,26 @@ module mod_output
       
       end subroutine
 
-      subroutine write_vtk_binary(istep,ndime,npoin,nelem,nnode,coord,connec, &
-                                 rho,u,pr,E,mu_e)
+      subroutine write_vtk_binary(isPeriodic,istep,ndime,npoin,nelem,nnode,coord,connec, &
+                                 rho,u,pr,E,mu_e,nper,masSla)
          implicit none
       
-         integer(4), intent(in)                           :: istep, ndime, npoin, nelem, nnode
-         integer(4), intent(in)                           :: connec(nelem,nnode)
-         real(8)   , intent(in)                           :: coord(npoin,ndime)
-         real(8)   , intent(in), dimension(npoin)         :: rho, pr, E
-         real(8)   , intent(in), dimension(npoin,ndime)   :: u
-         real(8)   , intent(in), dimension(nelem)         :: mu_e
-         integer(4)                                       :: i, ivtk=9
-         integer(4)            , dimension(nelem,nnode+1) :: cells
-         integer(4)            , dimension(nelem)         :: cellTypes
-         real(8)               , dimension(npoin,3)       :: points, u3d
-         character(500)                                   :: filename
-         character(80)                                    :: buffer
-         character(8)                                     :: str1, str2
-         character(1)                                     :: lf
+         integer(4), intent(in)                            :: isPeriodic, nper
+         integer(4), intent(in)                            :: istep, ndime, npoin, nelem, nnode
+         integer(4), intent(in)                            :: connec(nelem,nnode)
+         integer(4), intent(in), optional                  :: masSla(nper,2)
+         real(8)   , intent(in)                            :: coord(npoin,ndime)
+         real(8)   , intent(inout), dimension(npoin)       :: rho, pr, E
+         real(8)   , intent(inout), dimension(npoin,ndime) :: u
+         real(8)   , intent(inout), dimension(nelem)       :: mu_e
+         integer(4)                                        :: i, iper, ivtk=9
+         integer(4)            , dimension(nelem,nnode+1)  :: cells
+         integer(4)            , dimension(nelem)          :: cellTypes
+         real(8)               , dimension(npoin,3)        :: points, u3d
+         character(500)                                    :: filename
+         character(80)                                     :: buffer
+         character(8)                                      :: str1, str2
+         character(1)                                      :: lf
 
          lf = achar(10)
       
@@ -169,6 +171,20 @@ module mod_output
          points(:,1:ndime) = coord(:,1:ndime)
          !$acc end kernels
       
+         !
+         ! If case is periodic, adjust slave nodes
+         !
+         if (isPeriodic .eq.1 .and. present(masSla)) then
+            !$acc parallel loop
+            do iper = 1,nper
+               u(masSla(iper,2),1:ndime) = u(masSla(iper,1),1:ndime)
+               rho(masSla(iper,2)) = rho(masSla(iper,1))
+               pr(masSla(iper,2)) = pr(masSla(iper,1))
+               E(masSla(iper,2)) = E(masSla(iper,1))
+            end do
+            !$acc end parallel loop
+         end if
+
          !
          ! Pass vector data to a suitable 3D generic format
          !
