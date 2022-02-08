@@ -74,7 +74,7 @@ program sod2d
         dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
         nsave = 1 ! First step to save, TODO: input
         nleap = 1 ! Saving interval, TODO: input
-        isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
+        isPeriodic = 0 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
            nper = 3 ! TODO: if periodic, request number of periodic nodes
         else if (isPeriodic == 0) then
@@ -398,6 +398,9 @@ program sod2d
         ! Treat periodicity                                                   !
         !*********************************************************************!
         
+        ! TODO: Verify if lpoin_W is really necessary. Complexity may not be worth a few
+        ! less ops.
+
         if (isPeriodic == 1) then
            if (nboun .eq. 0) then
               call periodic_ops(nelem,npoin,nboun,npbou,npoin_w,nnode,nper, &
@@ -415,7 +418,6 @@ program sod2d
            end do
            !$acc end parallel
         end if
-        STOP(1)
 
         !*********************************************************************!
         ! Compute mass matrix (Lumped and Consistent) and set solver type     !
@@ -423,13 +425,8 @@ program sod2d
 
         write(*,*) '--| COMPUTING LUMPED MASS MATRIX...'
         call nvtxStartRange("Lumped mass compute")
-        if (isPeriodic .eq. 1) then
-            allocate(Ml(npoin_w))
-            call lumped_mass(nelem,nnode,npoin_w,ngaus,connec,gpvol,Ngp,Ml)
-        else if (isPeriodic .eq. 0) then
-            allocate(Ml(npoin))
-            call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
-        end if
+        allocate(Ml(npoin))
+        call lumped_mass(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,Ml)
         solver_type = 'LUMSO'
         call nvtxEndRange
 
@@ -625,7 +622,7 @@ program sod2d
                   !
                   if (istep == nsave) then
                      call nvtxStartRange("Output "//timeStep,istep)
-                     call write_vtk_binary(isPeriodic.counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
+                     call write_vtk_binary(isPeriodic,counter,ndime,npoin,nelem,nnode,coord,connec_orig, &
                                           rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper,masSla)
                      nsave = nsave+nleap
                      call nvtxEndRange
