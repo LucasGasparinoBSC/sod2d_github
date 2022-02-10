@@ -147,7 +147,7 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
-                         !$acc parallel loop
+                         !$acc parallel loop gang
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
@@ -281,7 +281,7 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
-                         !$acc parallel loop
+                         !$acc parallel loop gang
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
@@ -412,7 +412,7 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
-                         !$acc parallel loop
+                         !$acc parallel loop gang
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
@@ -545,7 +545,7 @@ module time_integ
                          ! Nodes belonging to both codes will be zeroed on both directions.
                          ! Like this, there's no need to fnd intersections.
                          !
-                         !$acc parallel loop
+                         !$acc parallel loop gang
                          do iboun = 1,nboun
                             bcode = bou_codes(iboun,2) ! Boundary element code
                             if (bcode == 1) then
