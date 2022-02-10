@@ -85,7 +85,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,npoin_w,lpoin_w,nnode,ndime, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
                                    rho, u, pr, q, gamma_gas, &
@@ -110,11 +110,11 @@ module time_integ
                          Rmass_1(:) = Rmass_1(:) + Rdiff_scal(:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin_w,Ml,Rmass_1(lpoin_w(:)))
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rmass_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
-                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
+                      call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
                       !$acc kernels
-                      rho_1(:) = rho(:,pos)-(dt/2.0d0)*Rmass_1(:)
+                      rho_1(lpoin_w(:)) = rho(lpoin_w(:),pos)-(dt/2.0d0)*Rmass_1(lpoin_w(:))
                       !$acc end kernels
 
                       !
@@ -127,48 +127,50 @@ module time_integ
                          Rmom_1(:,:) = Rmom_1(:,:) + Rdiff_vect(:,:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
+                      call lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,Rmom_1)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
-                      call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
+                      call approx_inverse_vect(ndime,nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
                       !$acc kernels
-                      q_1(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_1(:,:)
+                      q_1(lpoin_w(:),:) = q(lpoin_w(:),pos)-(dt/2.0d0)*Rmom_1(lpoin_w(:),:)
                       !$acc end kernels
 
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
-                      if (ndime == 2) then
-                         !$acc kernels
-                         q_1(lbnodes,2) = 0.0d0
-                         !$acc end kernels
-                      else if (ndime == 3) then
-                         !
-                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
-                         ! Nodes belonging to both codes will be zeroed on both directions.
-                         ! Like this, there's no need to fnd intersections.
-                         !
-                         !$acc parallel loop gang
-                         do iboun = 1,nboun
-                            bcode = bou_codes(iboun,2) ! Boundary element code
-                            if (bcode == 1) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_1(bound(iboun,ipbou),2) = 0.0d0
-                               end do
-                            else if (bcode == 2) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_1(bound(iboun,ipbou),3) = 0.0d0
-                               end do
-                            end if
-                         end do
-                         !$acc end parallel loop
+                      if (nboun .ne. 0) then
+                         if (ndime == 2) then
+                            !$acc kernels
+                            q_1(lbnodes,2) = 0.0d0
+                            !$acc end kernels
+                         else if (ndime == 3) then
+                            !
+                            ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                            ! Nodes belonging to both codes will be zeroed on both directions.
+                            ! Like this, there's no need to fnd intersections.
+                            !
+                            !$acc parallel loop gang
+                            do iboun = 1,nboun
+                               bcode = bou_codes(iboun,2) ! Boundary element code
+                               if (bcode == 1) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_1(bound(iboun,ipbou),2) = 0.0d0
+                                  end do
+                               else if (bcode == 2) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_1(bound(iboun,ipbou),3) = 0.0d0
+                                  end do
+                               end if
+                            end do
+                            !$acc end parallel loop
+                         end if
                       end if
 
                       !$acc parallel loop collapse(2)
-                      do ipoin = 1,npoin
+                      do ipoin = 1,npoin_w
                          do idime = 1,ndime
-                            u_1(ipoin,idime) = q_1(ipoin,idime)/rho_1(ipoin)
+                            u_1(lpoin_w(ipoin),idime) = q_1(lpoin_w(ipoin),idime)/rho_1(lpoin_w(ipoin))
                          end do
                       end do
                       !$acc end parallel loop
@@ -178,26 +180,29 @@ module time_integ
                       !
                       call ener_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),pr(:,pos),E(:,pos),Rener_1)
                       if (flag_predic == 0) then
-                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),Tem(:,pos),mu_e,Rdiff_scal)
+                         call ener_diffusion(nelem,ngaus,npoin,nnode,ndime, &
+                                             connec,Ngp,dNgp,He,gpvol,u(:,:,pos),Tem(:,pos),mu_e,Rdiff_scal)
                          !$acc kernels
                          Rener_1(:) = Rener_1(:) + Rdiff_scal(:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rener_1)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rener_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_1)
-                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_1)
+                      call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,npoin_w,lpoin_w,ngaus, &
+                                                 connec,gpvol,Ngp,ppow,Ml,Rener_1)
                       !$acc kernels
-                      E_1(:) = E(:,pos)-(dt/2.0d0)*Rener_1(:)
+                      E_1(lpoin_w(:)) = E(lpoin_w(:),pos)-(dt/2.0d0)*Rener_1(lpoin_w(:))
                       !$acc end kernels
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin
-                         e_int_1(ipoin) = (E_1(ipoin)/rho_1(ipoin))-0.5d0*dot_product(u_1(ipoin,:),u_1(ipoin,:))
+                      do ipoin = 1,npoin_w
+                         e_int_1(lpoin_w(ipoin)) = (E_1(lpoin_w(:))/rho_1(lpoin_w(:)))- &
+                            0.5d0*dot_product(u_1(lpoin_w(ipoin),:),u_1(lpoin_w(ipoin),:))
                       end do
                       !$acc end parallel loop
                       !$acc kernels
-                      pr_1(:) = rho_1(:)*(gamma_gas-1.0d0)*e_int_1(:)
-                      Tem_1(:) = pr_1(:)/(rho_1(:)*Rgas)
+                      pr_1(lpoin_w(:)) = rho_1(lpoin_w(:))*(gamma_gas-1.0d0)*e_int_1(lpoin_w(:))
+                      Tem_1(lpoin_w(:)) = pr_1(lpoin_w(:))/(rho_1(lpoin_w(:))*Rgas)
                       !$acc end kernels
 
                       !
@@ -225,7 +230,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,npoin_w,lpoin_w,nnode,ndime, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_1, u_1, pr_1, q_1, &
                                    rho, u, pr, q, gamma_gas, &

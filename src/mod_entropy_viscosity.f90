@@ -6,7 +6,7 @@ module mod_entropy_viscosity
 
       contains
 
-              subroutine residuals(nelem,ngaus,npoin,nnode,ndime, &
+              subroutine residuals(nelem,ngaus,npoin,npoin_w,lpoin_w,nnode,ndime, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rhok, uk, prk, qk, &
                                    rho, u, pr, q, gamma_gas, &
@@ -18,8 +18,8 @@ module mod_entropy_viscosity
 
                       implicit none
 
-                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime, ppow
-                      integer(4), intent(in)  :: connec(nelem,nnode)
+                      integer(4), intent(in)  :: nelem, ngaus, npoin, nnode, ndime, ppow, npoin_w
+                      integer(4), intent(in)  :: connec(nelem,nnode), lpoin_w(npoin_w)
                       real(8),    intent(in)  :: Ngp(nnode,ngaus), dNgp(ndime,nnode,ngaus)
                       real(8),    intent(in)  :: He(ndime,ndime,ngaus,nelem)
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem), Ml(npoin)
@@ -63,9 +63,9 @@ module mod_entropy_viscosity
                        !
                        ! Alter Reta with inv(Mc)
                        !
-                       call lumped_solver_scal(npoin,Ml,Reta)
+                       call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Reta)
                        !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
-                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Reta)
+                       call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Reta)
                        !
                        ! Update Reta
                        !
@@ -101,9 +101,9 @@ module mod_entropy_viscosity
                        !
                        ! Apply solver
                        !
-                       call lumped_solver_scal(npoin,Ml,Rrho)
+                       call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rrho)
                        !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rrho)
-                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rrho)
+                       call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Rrho)
                        call nvtxEndRange
 
               end subroutine residuals

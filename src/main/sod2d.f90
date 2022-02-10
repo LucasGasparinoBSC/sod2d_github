@@ -522,6 +522,7 @@ program sod2d
               write(*,*) '--| ERROR: CASE MUST HAVE BOUNDARIES!'
               STOP(1)
            else ! Case has boundaries
+              write(*,*) '--| NON-PERIODIC CASE WITH BOUNDARIES'
               do istep = 1,nstep
 
                  write(*,*) '   --| STEP: ', istep
