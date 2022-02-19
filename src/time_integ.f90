@@ -127,11 +127,11 @@ module time_integ
                          Rmom_1(:,:) = Rmom_1(:,:) + Rdiff_vect(:,:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,Rmom_1)
+                      call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
-                      call approx_inverse_vect(ndime,nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
+                      call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
                       !$acc kernels
-                      q_1(lpoin_w(:),:) = q(lpoin_w(:),pos)-(dt/2.0d0)*Rmom_1(lpoin_w(:),:)
+                      q_1(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_1(:,:)
                       !$acc end kernels
 
                       !
@@ -168,9 +168,9 @@ module time_integ
                       end if
 
                       !$acc parallel loop collapse(2)
-                      do ipoin = 1,npoin_w
+                      do ipoin = 1,npoin
                          do idime = 1,ndime
-                            u_1(lpoin_w(ipoin),idime) = q_1(lpoin_w(ipoin),idime)/rho_1(lpoin_w(ipoin))
+                            u_1(ipoin,idime) = q_1(ipoin,idime)/rho_1(ipoin)
                          end do
                       end do
                       !$acc end parallel loop
@@ -186,23 +186,23 @@ module time_integ
                          Rener_1(:) = Rener_1(:) + Rdiff_scal(:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rener_1)
+                      call lumped_solver_scal(npoin,Ml,Rener_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_1)
-                      call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,npoin_w,lpoin_w,ngaus, &
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus, &
                                                  connec,gpvol,Ngp,ppow,Ml,Rener_1)
                       !$acc kernels
-                      E_1(lpoin_w(:)) = E(lpoin_w(:),pos)-(dt/2.0d0)*Rener_1(lpoin_w(:))
+                      E_1(:) = E(:,pos)-(dt/2.0d0)*Rener_1(:)
                       !$acc end kernels
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin_w
-                         e_int_1(lpoin_w(ipoin)) = (E_1(lpoin_w(:))/rho_1(lpoin_w(:)))- &
-                            0.5d0*dot_product(u_1(lpoin_w(ipoin),:),u_1(lpoin_w(ipoin),:))
+                      do ipoin = 1,npoin
+                         e_int_1(ipoin) = (E_1(:)/rho_1(:))- &
+                            0.5d0*dot_product(u_1(ipoin,:),u_1(ipoin,:))
                       end do
                       !$acc end parallel loop
                       !$acc kernels
-                      pr_1(lpoin_w(:)) = rho_1(lpoin_w(:))*(gamma_gas-1.0d0)*e_int_1(lpoin_w(:))
-                      Tem_1(lpoin_w(:)) = pr_1(lpoin_w(:))/(rho_1(lpoin_w(:))*Rgas)
+                      pr_1(:) = rho_1(:)*(gamma_gas-1.0d0)*e_int_1(:)
+                      Tem_1(:) = pr_1(:)/(rho_1(:)*Rgas)
                       !$acc end kernels
 
                       !
