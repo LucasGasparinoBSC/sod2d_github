@@ -4,36 +4,36 @@ module mod_solver
 
       contains
 
-              subroutine lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,R)
+              subroutine lumped_solver_scal(npoin,Ml,R)
 
                       implicit none
 
-                      integer(4), intent(in)    :: npoin, npoin_w, lpoin_w(npoin_w)
+                      integer(4), intent(in)    :: npoin
                       real(8),    intent(in)    :: Ml(npoin)
                       real(8),    intent(inout) :: R(npoin)
                       integer(4)                :: ipoin
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin_w
-                         R(lpoin_w(ipoin)) = R(lpoin_w(ipoin))/Ml(lpoin_w(ipoin))
+                      do ipoin = 1,npoin
+                         R(ipoin) = R(ipoin)/Ml(ipoin)
                       end do
                       !$acc end parallel
 
               end subroutine lumped_solver_scal
 
-              subroutine lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,R)
+              subroutine lumped_solver_vect(npoin,ndime,Ml,R)
 
                       implicit none
 
-                      integer(4), intent(in)    :: npoin, npoin_w, ndime, lpoin_w(npoin_w)
+                      integer(4), intent(in)    :: npoin, ndime
                       real(8),    intent(in)    :: Ml(npoin)
                       real(8),    intent(inout) :: R(npoin,ndime)
                       integer(4)                :: idime, ipoin
 
                       !$acc parallel loop collapse(2)
-                      do ipoin = 1,npoin_w
+                      do ipoin = 1,npoin
                          do idime = 1,ndime
-                            R(lpoin_w(ipoin),idime) = R(lpoin_w(ipoin),idime)/Ml(ipoin)
+                            R(ipoin,idime) = R(ipoin,idime)/Ml(ipoin)
                          end do
                       end do
                       !$acc end  parallel loop
@@ -41,7 +41,7 @@ module mod_solver
               end subroutine lumped_solver_vect
 
               !subroutine approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
-              subroutine approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,R)
+              subroutine approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,R)
 
                       use mass_matrix
 
@@ -55,8 +55,8 @@ module mod_solver
                       !real(8),    dimension(npoin) :: b, v, x
                       !real(8)                      :: Ar(nzdom)
 
-                      integer(4), intent(in)       :: nelem,nnode,npoin,ngaus,ppow,npoin_w
-                      integer(4), intent(in)       :: connec(nelem,nnode),lpoin_w(npoin_w)
+                      integer(4), intent(in)       :: nelem,nnode,npoin,ngaus,ppow
+                      integer(4), intent(in)       :: connec(nelem,nnode)
                       real(8),    intent(in)       :: gpvol(1,ngaus,nelem),Ngp(ngaus,nnode),Ml(npoin)
                       real(8),    intent(inout)    :: R(npoin)
                       integer(4)                   :: ipoin, ipow
@@ -104,7 +104,7 @@ module mod_solver
                          !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                          call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
                          !$acc kernels
-                         v(lpoin_w(:)) = v(lpoin_w(:))-(b(lpoin_w(:))/Ml(lpoin_w(:)))
+                         v(:) = v(:)-(b(:)/Ml(:))
                          !$acc end kernels
                          !$acc kernels
                          !v(:) = b(:)
@@ -119,7 +119,7 @@ module mod_solver
               end subroutine approx_inverse_scalar
 
               !subroutine approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
-              subroutine approx_inverse_vect(ndime,nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,R)
+              subroutine approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,R)
 
                       use mass_matrix
 
@@ -133,8 +133,8 @@ module mod_solver
                       !real(8),    dimension(npoin) :: b, v, x
                       !real(8)                      :: Ar(nzdom)
 
-                      integer(4), intent(in)       :: ndime,nelem,nnode,npoin,ngaus,ppow,npoin_w
-                      integer(4), intent(in)       :: connec(nelem,nnode),lpoin_w(npoin_w)
+                      integer(4), intent(in)       :: ndime,nelem,nnode,npoin,ngaus,ppow
+                      integer(4), intent(in)       :: connec(nelem,nnode)
                       real(8),    intent(in)       :: gpvol(1,ngaus,nelem),Ngp(ngaus,nnode),Ml(npoin)
                       real(8),    intent(inout)    :: R(npoin,ndime)
                       integer(4)                   :: ipoin, idime, ipow
@@ -182,7 +182,7 @@ module mod_solver
                             !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                             call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
                             !$acc kernels
-                            v(lpoin_w(:)) = v(lpoin_w(:))-(b(lpoin_w(:))/Ml(lpoin_w(:)))
+                            v(:) = v(:)-(b(:)/Ml(:))
                             !$acc end kernels
                             !$acc kernels
                             !v(:) = b(:)
