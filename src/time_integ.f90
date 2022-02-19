@@ -85,7 +85,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,npoin_w,lpoin_w,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
                                    rho, u, pr, q, gamma_gas, &
@@ -110,11 +110,11 @@ module time_integ
                          Rmass_1(:) = Rmass_1(:) + Rdiff_scal(:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rmass_1)
+                      call lumped_solver_scal(npoin,Ml,Rmass_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
-                      call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
+                      call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
                       !$acc kernels
-                      rho_1(lpoin_w(:)) = rho(lpoin_w(:),pos)-(dt/2.0d0)*Rmass_1(lpoin_w(:))
+                      rho_1(:) = rho(:,pos)-(dt/2.0d0)*Rmass_1(:)
                       !$acc end kernels
 
                       !
