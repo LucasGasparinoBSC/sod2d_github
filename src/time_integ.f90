@@ -513,30 +513,32 @@ module time_integ
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,rho_3,mu_e,Rdiff_scal)
                          !$acc kernels
-                         Rmass_4(:) = Rmass_4(:) + Rdiff_scal(:)
+                         Rmass_4(lpoin_w(:)) = Rmass_4(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_4)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_4)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_4)
                       !$acc kernels
-                      aux_mass(:) = Rmass_1(:)+2.0d0*Rmass_2(:)+2.0d0*Rmass_3(:)+Rmass_4(:)
-                      rho_4(:) = rho(:,pos)-(dt/6.0d0)*aux_mass(:)
+                      aux_mass(lpoin_w(:)) = Rmass_1(lpoin_w(:))+2.0d0*Rmass_2(lpoin_w(:))+ &
+                         2.0d0*Rmass_3(lpoin_w(:))+Rmass_4(lpoin_w(:))
+                      rho_4(lpoin_w(:)) = rho(lpoin_w(:),pos)-(dt/6.0d0)*aux_mass(lpoin_w(:))
                       !$acc end kernels
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,q_3,pr_3,Rmom_4)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,mu_e,Rdiff_vect)
                          !$acc kernels
-                         Rmom_4(:,:) = Rmom_4(:,:) + Rdiff_vect(:,:)
+                         Rmom_4(lpoin_w(:),:) = Rmom_4(lpoin_w(:),:) + Rdiff_vect(lpoin_w(:),:)
                          !$acc end kernels
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_4)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_4)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_4)
                       !$acc kernels
-                      aux_mom(:,:) = Rmom_1(:,:)+2.0d0*Rmom_2(:,:)+2.0d0*Rmom_3(:,:)+Rmom_4(:,:)
-                      q_4(:,:) = q(:,:,pos)-(dt/6.0d0)*aux_mom(:,:)
+                      aux_mom(lpoin_w(:),:) = Rmom_1(lpoin_w(:),:)+2.0d0*Rmom_2(lpoin_w(:),:)+ &
+                         2.0d0*Rmom_3(lpoin_w(:),:)+Rmom_4(lpoin_w(:),:)
+                      q_4(lpoin_w(:),:) = q(lpoin_w(:),:,pos)-(dt/6.0d0)*aux_mom(lpoin_w(:),:)
                       !$acc end kernels
 
                       !
@@ -570,9 +572,9 @@ module time_integ
                          !$acc end parallel loop
                       end if
                       !$acc parallel loop collapse(2)
-                      do ipoin = 1,npoin
+                      do ipoin = 1,npoin_w
                          do idime = 1,ndime
-                            u_4(ipoin,:) = q_4(ipoin,:)/rho_4(ipoin)
+                            u_4(lpoin_w(ipoin),:) = q_4(lpoin_w(ipoin),:)/rho_4(lpoin_w(ipoin))
                          end do
                       end do
                       !$acc end parallel loop
@@ -581,25 +583,27 @@ module time_integ
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_3,Tem_3,mu_e,Rdiff_scal)
                          !$acc kernels
-                         Rener_4(:) = Rener_4(:) + Rdiff_scal(:)
+                         Rener_4(lpoin_w(:)) = Rener_4(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_4)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_4)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_4)
                       !$acc kernels
-                      aux_ener(:) = Rener_1(:)+2.0d0*Rener_2(:)+2.0d0*Rener_3(:)+Rener_4(:)
-                      E_4(:) = E(:,pos)-(dt/6.0d0)*aux_ener(:)
+                      aux_ener(lpoin_w(:)) = Rener_1(lpoin_w(:))+2.0d0*Rener_2(lpoin_w(:))+ &
+                         2.0d0*Rener_3(lpoin_w(:))+Rener_4(lpoin_w(:))
+                      E_4(lpoin_w(:)) = E(lpoin_w(:),pos)-(dt/6.0d0)*aux_ener(lpoin_w(:))
                       !$acc end kernels
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin
-                         e_int_4(ipoin) = (E_4(ipoin)/rho_4(ipoin))-0.5d0*dot_product(u_4(ipoin,:),u_4(ipoin,:))
+                      do ipoin = 1,npoin_w
+                         e_int_4(lpoin_w(ipoin)) = (E_4(lpoin_w(ipoin))/rho_4(lpoin_w(ipoin)))- &
+                            0.5d0*dot_product(u_4(lpoin_w(ipoin),:),u_4(lpoin_w(ipoin),:))
                       end do
                       !$acc end parallel loop
                       !$acc kernels
-                      pr_4(:) = rho_4(:)*(gamma_gas-1.0d0)*e_int_4(:)
-                      Tem_4(:) = pr_4(:)/(rho_4(:)*Rgas)
+                      pr_4(lpoin_w(:)) = rho_4(lpoin_w(:))*(gamma_gas-1.0d0)*e_int_4(lpoin_w(:))
+                      Tem_4(lpoin_w(:)) = pr_4(lpoin_w(:))/(rho_4(lpoin_w(:))*Rgas)
                       !$acc end kernels
 
                       !
@@ -608,13 +612,13 @@ module time_integ
 
                       call nvtxStartRange("Update")
                       !$acc kernels
-                      rho(:,pos) = rho_4
-                      u(:,:,pos) = u_4
-                      pr(:,pos) = pr_4
-                      E(:,pos) = E_4
-                      q(:,:,pos) = q_4
-                      e_int(:,pos) = e_int_4
-                      Tem(:,pos) = Tem_4
+                      rho(:,pos) = rho_4(:)
+                      u(:,:,pos) = u_4(:,:)
+                      pr(:,pos) = pr_4(:)
+                      E(:,pos) = E_4(:)
+                      q(:,:,pos) = q_4(:,:)
+                      e_int(:,pos) = e_int_4(:)
+                      Tem(:,pos) = Tem_4(:)
                       !$acc end kernels
                       call nvtxEndRange
 
