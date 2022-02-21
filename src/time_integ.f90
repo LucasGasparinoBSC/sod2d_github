@@ -196,7 +196,7 @@ module time_integ
 
                       !$acc parallel loop
                       do ipoin = 1,npoin
-                         e_int_1(ipoin) = (E_1(:)/rho_1(:))- &
+                         e_int_1(ipoin) = (E_1(ipoin)/rho_1(ipoin))- &
                             0.5d0*dot_product(u_1(ipoin,:),u_1(ipoin,:))
                       end do
                       !$acc end parallel loop
@@ -230,7 +230,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,npoin_w,lpoin_w,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_1, u_1, pr_1, q_1, &
                                    rho, u, pr, q, gamma_gas, &
