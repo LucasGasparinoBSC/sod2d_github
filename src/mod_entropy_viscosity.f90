@@ -37,13 +37,15 @@ module mod_entropy_viscosity
                        !
                        call nvtxStartRange("Entropy transport")
                        !$acc kernels
-                       eta(:) = (rhok(:)/(gamma_gas-1.0d0))*log(prk(:)/(rhok(:)**gamma_gas))
-                       eta_p(:) = (rho(:,1)/(gamma_gas-1.0d0))*log(pr(:,1)/(rho(:,1)**gamma_gas))
+                       eta(lpoin_w(:)) = (rhok(lpoin_w(:))/(gamma_gas-1.0d0))* &
+                          log(prk(lpoin_w(:))/(rhok(lpoin_w(:))**gamma_gas))
+                       eta_p(lpoin_w(:)) = (rho(lpoin_w(:),1)/(gamma_gas-1.0d0))* &
+                          log(pr(lpoin_w(:),1)/(rho(lpoin_w(:),1)**gamma_gas))
                        !$acc end kernels
                        do idime = 1,ndime
                           !$acc kernels
-                          f_eta(:,idime) = uk(:,idime)*eta(:)
-                          f_rho(:,idime) = qk(:,idime)
+                          f_eta(lpoin_w(:),idime) = uk(lpoin_w(:),idime)*eta(lpoin_w(:))
+                          f_rho(lpoin_w(:),idime) = qk(lpoin_w(:),idime)
                           !$acc end kernels
                        end do
 
@@ -51,9 +53,9 @@ module mod_entropy_viscosity
                        ! Temporal eta
                        !
                        !$acc kernels
-                       R1(:) = (eta_p(:)-eta(:))/dt  ! Temporal entropy
-                       Reta(:) = 0.0d0
-                       alpha(:) = 1.0d0
+                       R1(lpoin_w(:)) = (eta_p(lpoin_w(:))-eta(lpoin_w(:)))/dt  ! Temporal entropy
+                       Reta(lpoin_w(:)) = 0.0d0
+                       alpha(lpoin_w(:)) = 1.0d0
                        !$acc end kernels
                        !
                        ! Entropy residual
@@ -70,15 +72,15 @@ module mod_entropy_viscosity
                        ! Update Reta
                        !
                        !$acc kernels
-                       Reta(:) = Reta(:)+1.0d0*R1(:)
+                       Reta(lpoin_w(:)) = Reta(lpoin_w(:))+1.0d0*R1(lpoin_w(:))
                        !$acc end kernels
 
                        !
                        ! Temporal mass
                        !
                        !$acc kernels
-                       R2(:) = (rho(:,1)-rhok(:))/dt
-                       alpha(:) = eta(:)/rhok(:)
+                       R2(lpoin_w(:)) = (rho(lpoin_w(:),1)-rhok(lpoin_w(:)))/dt
+                       alpha(lpoin_w(:)) = eta(lpoin_w(:))/rhok(lpoin_w(:))
                        !$acc end kernels
                        !
                        ! Alter R2 with Mcw
@@ -88,7 +90,7 @@ module mod_entropy_viscosity
                        ! Compute weighted mass convec
                        !
                        !$acc kernels
-                       Rrho(:) = 0.0d0
+                       Rrho(lpoin_w(:)) = 0.0d0
                        !$acc end kernels
                        call generic_scalar_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp, &
                                                   dNgp,He,gpvol,f_rho,Rrho,alpha)
@@ -96,7 +98,7 @@ module mod_entropy_viscosity
                        ! Update Rrho with both terms
                        !
                        !$acc kernels
-                       Rrho(:) = Rrho(:)+1.0d0*aux1(:)
+                       Rrho(lpoin_w(:)) = Rrho(lpoin_w(:))+1.0d0*aux1(lpoin_w(:))
                        !$acc end kernels
                        !
                        ! Apply solver
