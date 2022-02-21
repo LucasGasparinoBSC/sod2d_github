@@ -66,7 +66,7 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! TODO: make it input
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 100 ! TODO: Needs to be input...
+        nstep = 1 ! TODO: Needs to be input...
         Rgas = 287.00d0 ! TODO: Make it input
         Cp = 1004.00d0 ! TODO: Make it input
         gamma_gas = 1.40d0 ! TODO: Make it innput
@@ -410,13 +410,13 @@ program sod2d
                                 lpoin_w,connec,connec_orig,masSla,bound,bound_orig)
            end if
         else if (isPeriodic == 0) then
-           allocate(lpoin_w(npoin)) ! All nodes are working nodes
+           npoin_w = npoin
+           allocate(lpoin_w(npoin_w)) ! All nodes are working nodes
            !$acc parallel loop
-           do ipoin = 1,npoin
+           do ipoin = 1,npoin_w
               lpoin_w(ipoin) = ipoin
-              npoin_w = npoin
            end do
-           !$acc end parallel
+           !$acc end parallel loop
         end if
 
         !*********************************************************************!

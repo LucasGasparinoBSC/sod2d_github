@@ -107,14 +107,14 @@ module time_integ
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,rho(:,pos),mu_e,Rdiff_scal)
                          !$acc kernels
-                         Rmass_1(:) = Rmass_1(:) + Rdiff_scal(:)
+                         Rmass_1(lpoin_w(:)) = Rmass_1(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
                       !$acc kernels
-                      rho_1(:) = rho(:,pos)-(dt/2.0d0)*Rmass_1(:)
+                      rho_1(lpoin_w(:)) = rho(lpoin_w(:),pos)-(dt/2.0d0)*Rmass_1(lpoin_w(:))
                       !$acc end kernels
 
                       !
@@ -124,14 +124,14 @@ module time_integ
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u(:,:,pos),mu_e,Rdiff_vect)
                          !$acc kernels
-                         Rmom_1(:,:) = Rmom_1(:,:) + Rdiff_vect(:,:)
+                         Rmom_1(lpoin_w(:),:) = Rmom_1(lpoin_w(:),:) + Rdiff_vect(lpoin_w(:),:)
                          !$acc end kernels
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
                       !$acc kernels
-                      q_1(:,:) = q(:,:,pos)-(dt/2.0d0)*Rmom_1(:,:)
+                      q_1(lpoin_w(:),:) = q(lpoin_w(:),:,pos)-(dt/2.0d0)*Rmom_1(lpoin_w(:),:)
                       !$acc end kernels
 
                       !
@@ -168,9 +168,9 @@ module time_integ
                       end if
 
                       !$acc parallel loop collapse(2)
-                      do ipoin = 1,npoin
+                      do ipoin = 1,npoin_w
                          do idime = 1,ndime
-                            u_1(ipoin,idime) = q_1(ipoin,idime)/rho_1(ipoin)
+                            u_1(lpoin_w(ipoin),idime) = q_1(lpoin_w(ipoin),idime)/rho_1(lpoin_w(ipoin))
                          end do
                       end do
                       !$acc end parallel loop
