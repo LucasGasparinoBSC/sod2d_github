@@ -67,7 +67,7 @@ module mod_entropy_viscosity
                        !
                        call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Reta)
                        !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Reta)
-                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Reta)
+                       call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Reta)
                        !
                        ! Update Reta
                        !
@@ -105,7 +105,7 @@ module mod_entropy_viscosity
                        !
                        call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rrho)
                        !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rrho)
-                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rrho)
+                       call approx_inverse_scalar(nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,Rrho)
                        call nvtxEndRange
 
               end subroutine residuals
