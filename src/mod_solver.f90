@@ -120,7 +120,7 @@ module mod_solver
               end subroutine approx_inverse_scalar
 
               !subroutine approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,R)
-              subroutine approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,R)
+              subroutine approx_inverse_vect(ndime,nelem,nnode,npoin,npoin_w,lpoin_w,ngaus,connec,gpvol,Ngp,ppow,Ml,R)
 
                       use mass_matrix
 
@@ -134,8 +134,8 @@ module mod_solver
                       !real(8),    dimension(npoin) :: b, v, x
                       !real(8)                      :: Ar(nzdom)
 
-                      integer(4), intent(in)       :: ndime,nelem,nnode,npoin,ngaus,ppow
-                      integer(4), intent(in)       :: connec(nelem,nnode)
+                      integer(4), intent(in)       :: ndime,nelem,nnode,npoin,ngaus,ppow,npoin_w
+                      integer(4), intent(in)       :: connec(nelem,nnode),lpoin_w(npoin_w)
                       real(8),    intent(in)       :: gpvol(1,ngaus,nelem),Ngp(ngaus,nnode),Ml(npoin)
                       real(8),    intent(inout)    :: R(npoin,ndime)
                       integer(4)                   :: ipoin, idime, ipow
@@ -183,15 +183,16 @@ module mod_solver
                             !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                             call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
                             !$acc kernels
-                            v(:) = v(:)-(b(:)/Ml(:))
+                            v(lpoin_w(:)) = v(lpoin_w(:))- &
+                               (b(lpoin_w(:))/Ml(lpoin_w(:)))
                             !$acc end kernels
                             !$acc kernels
                             !v(:) = b(:)
-                            x(:) = x(:)+v(:)
+                            x(lpoin_w(:)) = x(lpoin_w(:))+v(lpoin_w(:))
                             !$acc end kernels
                          end do
                          !$acc kernels
-                         R(:,idime) = x(:)
+                         R(lpoin_w(:),idime) = x(lpoin_w(:))
                          !$acc end kernels
                       end do
                       call nvtxEndRange
