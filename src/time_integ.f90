@@ -183,7 +183,7 @@ module time_integ
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime, &
                                              connec,Ngp,dNgp,He,gpvol,u(:,:,pos),Tem(:,pos),mu_e,Rdiff_scal)
                          !$acc kernels
-                         Rener_1(:) = Rener_1(:) + Rdiff_scal(:)
+                         Rener_1(lpoin_w(:)) = Rener_1(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_1)
@@ -191,18 +191,18 @@ module time_integ
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus, &
                                                  connec,gpvol,Ngp,ppow,Ml,Rener_1)
                       !$acc kernels
-                      E_1(:) = E(:,pos)-(dt/2.0d0)*Rener_1(:)
+                      E_1(lpoin_w(:)) = E(lpoin_w(:),pos)-(dt/2.0d0)*Rener_1(lpoin_w(:))
                       !$acc end kernels
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin
-                         e_int_1(ipoin) = (E_1(ipoin)/rho_1(ipoin))- &
-                            0.5d0*dot_product(u_1(ipoin,:),u_1(ipoin,:))
+                      do ipoin = 1,npoin_w
+                         e_int_1(lpoin_w(ipoin)) = (E_1(lpoin_w(ipoin))/rho_1(lpoin_w(ipoin)))- &
+                            0.5d0*dot_product(u_1(lpoin_w(ipoin),:),u_1(lpoin_w(ipoin),:))
                       end do
                       !$acc end parallel loop
                       !$acc kernels
-                      pr_1(:) = rho_1(:)*(gamma_gas-1.0d0)*e_int_1(:)
-                      Tem_1(:) = pr_1(:)/(rho_1(:)*Rgas)
+                      pr_1(lpoin_w(:)) = rho_1(lpoin_w(:))*(gamma_gas-1.0d0)*e_int_1(lpoin_w(:))
+                      Tem_1(lpoin_w(:)) = pr_1(lpoin_w(:))/(rho_1(lpoin_w(:))*Rgas)
                       !$acc end kernels
 
                       !
