@@ -327,7 +327,7 @@ module time_integ
                       !$acc end kernels
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin
+                      do ipoin = 1,npoin_w
                          e_int_2(lpoin_w(ipoin)) = (E_2(lpoin_w(ipoin))/rho_2(lpoin_w(ipoin)))- &
                             0.5d0*dot_product(u_2(lpoin_w(ipoin),:),u_2(lpoin_w(ipoin),:))
                       end do
@@ -381,28 +381,28 @@ module time_integ
                       if (flag_predic == 0) then
                          call mass_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,rho_2,mu_e,Rdiff_scal)
                          !$acc kernels
-                         Rmass_3(:) = Rmass_3(:) + Rdiff_scal(:)
+                         Rmass_3(lpoin_w(:)) = Rmass_3(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rmass_3)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_3)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_3)
                       !$acc kernels
-                      rho_3(:) = rho(:,pos)-(dt/1.0d0)*Rmass_3(:)
+                      rho_3(lpoin_w(:)) = rho(lpoin_w(:),pos)-(dt/1.0d0)*Rmass_3(lpoin_w(:))
                       !$acc end kernels
 
                       call mom_convec(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,q_2,pr_2,Rmom_3)
                       if (flag_predic == 0) then
                          call mom_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,mu_e,Rdiff_vect)
                          !$acc kernels
-                         Rmom_3(:,:) = Rmom_3(:,:) + Rdiff_vect(:,:)
+                         Rmom_3(lpoin_w(:),:) = Rmom_3(lpoin_w(:),:) + Rdiff_vect(lpoin_w(:),:)
                          !$acc end kernels
                       end if
                       call lumped_solver_vect(npoin,ndime,Ml,Rmom_3)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_3)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_3)
                       !$acc kernels
-                      q_3(:,:) = q(:,:,pos)-(dt/1.0d0)*Rmom_3(:,:)
+                      q_3(lpoin_w(:),:) = q(lpoin_w(:),:,pos)-(dt/1.0d0)*Rmom_3(lpoin_w(:),:)
                       !$acc end kernels
 
                       !
@@ -437,9 +437,9 @@ module time_integ
                       end if
 
                       !$acc parallel loop collapse(2)
-                      do ipoin = 1,npoin
+                      do ipoin = 1,npoin_w
                          do idime = 1,ndime
-                            u_3(ipoin,idime) = q_3(ipoin,idime)/rho_3(ipoin)
+                            u_3(lpoin_w(ipoin),idime) = q_3(lpoin_w(ipoin),idime)/rho_3(lpoin_w(ipoin))
                          end do
                       end do
                       !$acc end parallel loop
@@ -448,24 +448,25 @@ module time_integ
                       if (flag_predic == 0) then
                          call ener_diffusion(nelem,ngaus,npoin,nnode,ndime,connec,Ngp,dNgp,He,gpvol,u_2,Tem_2,mu_e,Rdiff_scal)
                          !$acc kernels
-                         Rener_3(:) = Rener_3(:) + Rdiff_scal(:)
+                         Rener_3(lpoin_w(:)) = Rener_3(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
                       call lumped_solver_scal(npoin,Ml,Rener_3)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_3)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_3)
                       !$acc kernels
-                      E_3(:) = E(:,pos)-(dt/1.0d0)*Rener_3(:)
+                      E_3(lpoin_w(:)) = E(lpoin_w(:),pos)-(dt/1.0d0)*Rener_3(lpoin_w(:))
                       !$acc end kernels
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin
-                         e_int_3(ipoin) = (E_3(ipoin)/rho_3(ipoin))-0.5d0*dot_product(u_3(ipoin,:),u_3(ipoin,:))
+                      do ipoin = 1,npoin_w
+                         e_int_3(lpoin_w(ipoin)) = (E_3(lpoin_w(ipoin))/rho_3(lpoin_w(ipoin)))- &
+                            0.5d0*dot_product(u_3(lpoin_w(ipoin),:),u_3(lpoin_w(ipoin),:))
                       end do
                       !$acc end parallel loop
                       !$acc kernels
-                      pr_3(:) = rho_3(:)*(gamma_gas-1.0d0)*e_int_3(:)
-                      Tem_3(:) = pr_3(:)/(rho_3(:)*Rgas)
+                      pr_3(lpoin_w(:)) = rho_3(lpoin_w(:))*(gamma_gas-1.0d0)*e_int_3(lpoin_w(:))
+                      Tem_3(lpoin_w(:)) = pr_3(lpoin_w(:))/(rho_3(lpoin_w(:))*Rgas)
                       !$acc end kernels
 
                       !
