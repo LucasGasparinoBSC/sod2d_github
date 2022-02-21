@@ -280,32 +280,34 @@ module time_integ
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
-                      if (ndime == 2) then
-                         !$acc kernels
-                         q_2(lbnodes,2) = 0.0d0
-                         !$acc end kernels
-                      else if (ndime == 3) then
-                         !
-                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
-                         ! Nodes belonging to both codes will be zeroed on both directions.
-                         ! Like this, there's no need to fnd intersections.
-                         !
-                         !$acc parallel loop gang
-                         do iboun = 1,nboun
-                            bcode = bou_codes(iboun,2) ! Boundary element code
-                            if (bcode == 1) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_2(bound(iboun,ipbou),2) = 0.0d0
-                               end do
-                            else if (bcode == 2) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_2(bound(iboun,ipbou),3) = 0.0d0
-                               end do
-                            end if
-                         end do
-                         !$acc end parallel loop
+                      if (nboun .ne. 0) then
+                         if (ndime == 2) then
+                            !$acc kernels
+                            q_2(lbnodes,2) = 0.0d0
+                            !$acc end kernels
+                         else if (ndime == 3) then
+                            !
+                            ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                            ! Nodes belonging to both codes will be zeroed on both directions.
+                            ! Like this, there's no need to fnd intersections.
+                            !
+                            !$acc parallel loop gang
+                            do iboun = 1,nboun
+                               bcode = bou_codes(iboun,2) ! Boundary element code
+                               if (bcode == 1) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_2(bound(iboun,ipbou),2) = 0.0d0
+                                  end do
+                               else if (bcode == 2) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_2(bound(iboun,ipbou),3) = 0.0d0
+                                  end do
+                               end if
+                            end do
+                            !$acc end parallel loop
+                         end if
                       end if
 
                       !$acc parallel loop collapse(2)
@@ -415,32 +417,34 @@ module time_integ
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
-                      if (ndime == 2) then
-                         !$acc kernels
-                         q_3(lbnodes,2) = 0.0d0
-                         !$acc end kernels
-                      else if (ndime == 3) then
-                         !
-                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
-                         ! Nodes belonging to both codes will be zeroed on both directions.
-                         ! Like this, there's no need to fnd intersections.
-                         !
-                         !$acc parallel loop gang
-                         do iboun = 1,nboun
-                            bcode = bou_codes(iboun,2) ! Boundary element code
-                            if (bcode == 1) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_3(bound(iboun,ipbou),2) = 0.0d0
-                               end do
-                            else if (bcode == 2) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_3(bound(iboun,ipbou),3) = 0.0d0
-                               end do
-                            end if
-                         end do
-                         !$acc end parallel loop
+                      if (nboun .ne. 0) then
+                         if (ndime == 2) then
+                            !$acc kernels
+                            q_3(lbnodes,2) = 0.0d0
+                            !$acc end kernels
+                         else if (ndime == 3) then
+                            !
+                            ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                            ! Nodes belonging to both codes will be zeroed on both directions.
+                            ! Like this, there's no need to fnd intersections.
+                            !
+                            !$acc parallel loop gang
+                            do iboun = 1,nboun
+                               bcode = bou_codes(iboun,2) ! Boundary element code
+                               if (bcode == 1) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_3(bound(iboun,ipbou),2) = 0.0d0
+                                  end do
+                               else if (bcode == 2) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_3(bound(iboun,ipbou),3) = 0.0d0
+                                  end do
+                               end if
+                            end do
+                            !$acc end parallel loop
+                         end if
                       end if
 
                       !$acc parallel loop collapse(2)
@@ -554,33 +558,36 @@ module time_integ
                       !
                       ! Janky boundary conditions. TODO: Fix this shite...
                       !
-                      if (ndime == 2) then
-                         !$acc kernels
-                         q_4(lbnodes,2) = 0.0d0
-                         !$acc end kernels
-                      else if (ndime == 3) then
-                         !
-                         ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
-                         ! Nodes belonging to both codes will be zeroed on both directions.
-                         ! Like this, there's no need to fnd intersections.
-                         !
-                         !$acc parallel loop gang
-                         do iboun = 1,nboun
-                            bcode = bou_codes(iboun,2) ! Boundary element code
-                            if (bcode == 1) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_4(bound(iboun,ipbou),2) = 0.0d0
-                               end do
-                            else if (bcode == 2) then
-                               !$acc loop vector
-                               do ipbou = 1,npbou
-                                  q_4(bound(iboun,ipbou),3) = 0.0d0
-                               end do
-                            end if
-                         end do
-                         !$acc end parallel loop
+                      if (nboun .ne. 0) then
+                         if (ndime == 2) then
+                            !$acc kernels
+                            q_4(lbnodes,2) = 0.0d0
+                            !$acc end kernels
+                         else if (ndime == 3) then
+                            !
+                            ! Janky wall BC for 2 codes (1=y, 2=z) in 3D
+                            ! Nodes belonging to both codes will be zeroed on both directions.
+                            ! Like this, there's no need to fnd intersections.
+                            !
+                            !$acc parallel loop gang
+                            do iboun = 1,nboun
+                               bcode = bou_codes(iboun,2) ! Boundary element code
+                               if (bcode == 1) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_4(bound(iboun,ipbou),2) = 0.0d0
+                                  end do
+                               else if (bcode == 2) then
+                                  !$acc loop vector
+                                  do ipbou = 1,npbou
+                                     q_4(bound(iboun,ipbou),3) = 0.0d0
+                                  end do
+                               end if
+                            end do
+                            !$acc end parallel loop
+                         end if
                       end if
+                      
                       !$acc parallel loop collapse(2)
                       do ipoin = 1,npoin_w
                          do idime = 1,ndime
