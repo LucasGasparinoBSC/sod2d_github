@@ -21,19 +21,19 @@ module mod_solver
 
               end subroutine lumped_solver_scal
 
-              subroutine lumped_solver_vect(npoin,ndime,Ml,R)
+              subroutine lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,R)
 
                       implicit none
 
-                      integer(4), intent(in)    :: npoin, ndime
+                      integer(4), intent(in)    :: npoin, ndime, npoin_w, lpoin_w(npoin_w)
                       real(8),    intent(in)    :: Ml(npoin)
                       real(8),    intent(inout) :: R(npoin,ndime)
                       integer(4)                :: idime, ipoin
 
                       !$acc parallel loop collapse(2)
-                      do ipoin = 1,npoin
+                      do ipoin = 1,npoin_w
                          do idime = 1,ndime
-                            R(ipoin,idime) = R(ipoin,idime)/Ml(ipoin)
+                            R(lpoin_w(ipoin),idime) = R(lpoin_w(ipoin),idime)/Ml(lpoin_w(ipoin))
                          end do
                       end do
                       !$acc end  parallel loop

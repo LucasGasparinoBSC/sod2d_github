@@ -127,7 +127,7 @@ module time_integ
                          Rmom_1(lpoin_w(:),:) = Rmom_1(lpoin_w(:),:) + Rdiff_vect(lpoin_w(:),:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_vect(npoin,ndime,Ml,Rmom_1)
+                      call lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,Rmom_1)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_1)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_1)
                       !$acc kernels
@@ -266,7 +266,7 @@ module time_integ
                          Rmom_2(lpoin_w(:),:) = Rmom_2(lpoin_w(:),:) + Rdiff_vect(lpoin_w(:),:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_vect(npoin,ndime,Ml,Rmom_2)
+                      call lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,Rmom_2)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_2)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_2)
                       !$acc kernels
@@ -398,7 +398,7 @@ module time_integ
                          Rmom_3(lpoin_w(:),:) = Rmom_3(lpoin_w(:),:) + Rdiff_vect(lpoin_w(:),:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_vect(npoin,ndime,Ml,Rmom_3)
+                      call lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,Rmom_3)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_3)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_3)
                       !$acc kernels
@@ -532,7 +532,7 @@ module time_integ
                          Rmom_4(lpoin_w(:),:) = Rmom_4(lpoin_w(:),:) + Rdiff_vect(lpoin_w(:),:)
                          !$acc end kernels
                       end if
-                      call lumped_solver_vect(npoin,ndime,Ml,Rmom_4)
+                      call lumped_solver_vect(npoin,npoin_w,lpoin_w,ndime,Ml,Rmom_4)
                       !call approx_inverse_vect(ndime,npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmom_4)
                       call approx_inverse_vect(ndime,nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmom_4)
                       !$acc kernels
