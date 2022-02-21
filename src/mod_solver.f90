@@ -4,18 +4,18 @@ module mod_solver
 
       contains
 
-              subroutine lumped_solver_scal(npoin,Ml,R)
+              subroutine lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,R)
 
                       implicit none
 
-                      integer(4), intent(in)    :: npoin
+                      integer(4), intent(in)    :: npoin, npoin_w, lpoin_w(npoin_w)
                       real(8),    intent(in)    :: Ml(npoin)
                       real(8),    intent(inout) :: R(npoin)
                       integer(4)                :: ipoin
 
                       !$acc parallel loop
-                      do ipoin = 1,npoin
-                         R(ipoin) = R(ipoin)/Ml(ipoin)
+                      do ipoin = 1,npoin_w
+                         R(lpoin_w(ipoin)) = R(lpoin_w(ipoin))/Ml(lpoin_w(ipoin))
                       end do
                       !$acc end parallel
 

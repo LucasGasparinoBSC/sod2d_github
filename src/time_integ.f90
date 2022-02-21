@@ -85,7 +85,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime,npoin_w,lpoin_w, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho(:,2), u(:,:,2), pr(:,2), q(:,:,2), &
                                    rho, u, pr, q, gamma_gas, &
@@ -110,7 +110,7 @@ module time_integ
                          Rmass_1(lpoin_w(:)) = Rmass_1(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rmass_1)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rmass_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_1)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_1)
                       !$acc kernels
@@ -186,7 +186,7 @@ module time_integ
                          Rener_1(lpoin_w(:)) = Rener_1(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rener_1)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rener_1)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_1)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus, &
                                                  connec,gpvol,Ngp,ppow,Ml,Rener_1)
@@ -230,7 +230,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime,npoin_w,lpoin_w, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_1, u_1, pr_1, q_1, &
                                    rho, u, pr, q, gamma_gas, &
@@ -252,7 +252,7 @@ module time_integ
                          Rmass_2(lpoin_w(:)) = Rmass_2(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rmass_2)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rmass_2)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_2)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_2)
                       !$acc kernels
@@ -319,7 +319,7 @@ module time_integ
                          Rener_2(lpoin_w(:)) = Rener_2(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rener_2)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rener_2)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_2)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_2)
                       !$acc kernels
@@ -362,7 +362,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime,npoin_w,lpoin_w, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_2, u_2, pr_2, q_2, &
                                    rho, u, pr, q, gamma_gas, &
@@ -384,7 +384,7 @@ module time_integ
                          Rmass_3(lpoin_w(:)) = Rmass_3(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rmass_3)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rmass_3)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_3)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_3)
                       !$acc kernels
@@ -451,7 +451,7 @@ module time_integ
                          Rener_3(lpoin_w(:)) = Rener_3(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rener_3)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rener_3)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_3)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_3)
                       !$acc kernels
@@ -494,7 +494,7 @@ module time_integ
                          ! Compute Reta and Rrho for selector
                          !
                          call nvtxStartRange("ENVIT")
-                         call residuals(nelem,ngaus,npoin,nnode,ndime, &
+                         call residuals(nelem,ngaus,npoin,nnode,ndime,npoin_w,lpoin_w, &
                                    ppow, connec, Ngp, dNgp, He, gpvol, Ml, &
                                    dt, rho_3, u_3, pr_3, q_3, &
                                    rho, u, pr, q, gamma_gas, &
@@ -516,7 +516,7 @@ module time_integ
                          Rmass_4(lpoin_w(:)) = Rmass_4(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rmass_4)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rmass_4)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rmass_4)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rmass_4)
                       !$acc kernels
@@ -586,7 +586,7 @@ module time_integ
                          Rener_4(lpoin_w(:)) = Rener_4(lpoin_w(:)) + Rdiff_scal(lpoin_w(:))
                          !$acc end kernels
                       end if
-                      call lumped_solver_scal(npoin,Ml,Rener_4)
+                      call lumped_solver_scal(npoin,npoin_w,lpoin_w,Ml,Rener_4)
                       !call approx_inverse_scalar(npoin,nzdom,rdom,cdom,ppow,Ml,Mc,Rener_4)
                       call approx_inverse_scalar(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,ppow,Ml,Rener_4)
                       !$acc kernels
