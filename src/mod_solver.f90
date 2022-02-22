@@ -103,18 +103,19 @@ module mod_solver
                       do ipow = 1,ppow
                          !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                          call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
-                         !$acc kernels
-                         v(lpoin_w(:)) = v(lpoin_w(:))- &
-                            (b(lpoin_w(:))/Ml(lpoin_w(:)))
-                         !$acc end kernels
-                         !$acc kernels
-                         !v(:) = b(:)
-                         x(lpoin_w(:)) = x(lpoin_w(:))+v(lpoin_w(:))
-                         !$acc end kernels
+                         !$acc parallel loop
+                         do ipoin = 1,npoin_w
+                            v(lpoin_w(ipoin)) = v(lpoin_w(ipoin))- &
+                               (b(lpoin_w(ipoin))/Ml(lpoin_w(ipoin)))
+                            x(lpoin_w(ipoin)) = x(lpoin_w(ipoin))+v(lpoin_w(ipoin))
+                         end do
+                         !$acc end parallel loop
                       end do
-                      !$acc kernels
-                      R(lpoin_w(:)) = x(lpoin_w(:))
-                      !$acc end kernels
+                      !$acc parallel loop
+                      do ipoin = 1,npoin_w
+                         R(lpoin_w(ipoin)) = x(lpoin_w(ipoin))
+                      end do
+                      !$acc end parallel loop
                       call nvtxEndRange
 
               end subroutine approx_inverse_scalar
@@ -182,18 +183,19 @@ module mod_solver
                          do ipow = 1,ppow
                             !call CSR_SpMV_scal(npoin,nzdom,rdom,cdom,Ar,v,b)
                             call cmass_times_vector(nelem,nnode,npoin,ngaus,connec,gpvol,Ngp,v,b)
-                            !$acc kernels
-                            v(lpoin_w(:)) = v(lpoin_w(:))- &
-                               (b(lpoin_w(:))/Ml(lpoin_w(:)))
-                            !$acc end kernels
-                            !$acc kernels
-                            !v(:) = b(:)
-                            x(lpoin_w(:)) = x(lpoin_w(:))+v(lpoin_w(:))
-                            !$acc end kernels
+                            !$acc parallel loop
+                            do ipoin = 1,npoin_w
+                               v(lpoin_w(ipoin)) = v(lpoin_w(ipoin))- &
+                                  (b(lpoin_w(ipoin))/Ml(lpoin_w(ipoin)))
+                               x(lpoin_w(ipoin)) = x(lpoin_w(ipoin))+v(lpoin_w(ipoin))
+                            end do
+                            !$acc end parallel loop
                          end do
-                         !$acc kernels
-                         R(lpoin_w(:),idime) = x(lpoin_w(:))
-                         !$acc end kernels
+                         !$acc parallel loop
+                         do ipoin = 1,npoin_w
+                            R(lpoin_w(ipoin),idime) = x(lpoin_w(ipoin))
+                         end do
+                         !$acc end parallel loop
                       end do
                       call nvtxEndRange
 
