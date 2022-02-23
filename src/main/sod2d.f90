@@ -66,17 +66,17 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! TODO: make it input
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 5 ! TODO: Needs to be input...
+        nstep = 2000 ! TODO: Needs to be input...
         Rgas = 287.00d0 ! TODO: Make it input
         Cp = 1004.00d0 ! TODO: Make it input
         gamma_gas = 1.40d0 ! TODO: Make it innput
         Cv = Cp/gamma_gas
-        dt = 0.0005 ! TODO: make it adaptive...
-        nsave = 5 ! First step to save, TODO: input
-        nleap = 5 ! Saving interval, TODO: input
+        dt = 0.002 ! TODO: make it adaptive...
+        nsave = 50 ! First step to save, TODO: input
+        nleap = 50 ! Saving interval, TODO: input
         isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
-           nper = 197377 ! TODO: if periodic, request number of periodic nodes
+           nper = 49537 ! TODO: if periodic, request number of periodic nodes
         else if (isPeriodic == 0) then
            nper = 0 ! Set periodic nodes to zero if case is not periodic
         end if
