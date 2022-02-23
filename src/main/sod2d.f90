@@ -66,17 +66,17 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! TODO: make it input
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 1 ! TODO: Needs to be input...
+        nstep = 5 ! TODO: Needs to be input...
         Rgas = 287.00d0 ! TODO: Make it input
         Cp = 1004.00d0 ! TODO: Make it input
         gamma_gas = 1.40d0 ! TODO: Make it innput
         Cv = Cp/gamma_gas
-        dt = 0.0025d0/2.0d0 ! TODO: make it adaptive...
-        nsave = 1 ! First step to save, TODO: input
-        nleap = 1 ! Saving interval, TODO: input
-        isPeriodic = 0 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
+        dt = 0.0005 ! TODO: make it adaptive...
+        nsave = 5 ! First step to save, TODO: input
+        nleap = 5 ! Saving interval, TODO: input
+        isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
-           nper = 3 ! TODO: if periodic, request number of periodic nodes
+           nper = 197377 ! TODO: if periodic, request number of periodic nodes
         else if (isPeriodic == 0) then
            nper = 0 ! Set periodic nodes to zero if case is not periodic
         end if
@@ -90,7 +90,7 @@ program sod2d
         write(*,*) "--| ENTER NAME OF MESH RELATED FILES :"
         call nvtxStartRange("Read mesh")
         !read(*,*) file_name
-        write(file_name,*) "shock_tube" ! Nsys
+        write(file_name,*) "cube" ! Nsys
         call read_dims(file_path,file_name,npoin,nelem,nboun)
         allocate(connec(nelem,nnode))
         if (nboun .ne. 0) then
@@ -263,6 +263,7 @@ program sod2d
            call write_vtk_binary(isPeriodic,0,ndime,npoin,nelem,nnode,coord,connec, &
                                 rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper)
         else
+           print*, 'sub call: ok!'
            call write_vtk_binary(isPeriodic,0,ndime,npoin,nelem,nnode,coord,connec, &
                                 rho(:,2),u(:,:,2),pr(:,2),E(:,2),mu_e,nper,masSla)
         end if

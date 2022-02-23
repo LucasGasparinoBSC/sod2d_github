@@ -170,20 +170,22 @@ module mod_output
          points(:,:) = 0.0d0
          points(:,1:ndime) = coord(:,1:ndime)
          !$acc end kernels
+         print*, 'kernel1: ok!'
       
          !
          ! If case is periodic, adjust slave nodes
          !
          if (isPeriodic .eq.1 .and. present(masSla)) then
-            !$acc parallel loop
+            !!$acc parallel loop
             do iper = 1,nper
                u(masSla(iper,2),1:ndime) = u(masSla(iper,1),1:ndime)
                rho(masSla(iper,2)) = rho(masSla(iper,1))
                pr(masSla(iper,2)) = pr(masSla(iper,1))
                E(masSla(iper,2)) = E(masSla(iper,1))
             end do
-            !$acc end parallel loop
+            !!$acc end parallel loop
          end if
+         print*, 'kernel2: ok!'
 
          !
          ! Pass vector data to a suitable 3D generic format
