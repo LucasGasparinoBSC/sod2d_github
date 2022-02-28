@@ -23,6 +23,7 @@ program sod2d
         use mod_output
         use mod_period
         use time_integ
+        use mod_analysis
 
         implicit none
 
@@ -50,7 +51,7 @@ program sod2d
         real(8),    allocatable    :: mu_e(:)
         real(8)                    :: s, t, z, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
-        real(8)                    :: dt, cfl, he_aux
+        real(8)                    :: dt, cfl, he_aux, time, rho0, P0, T0, EK
         character(500)             :: file_path
         character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
@@ -66,14 +67,14 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! TODO: make it input
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 2000 ! TODO: Needs to be input...
+        nstep = 5 ! TODO: Needs to be input...
         Rgas = 287.00d0 ! TODO: Make it input
         Cp = 1004.00d0 ! TODO: Make it input
         gamma_gas = 1.40d0 ! TODO: Make it innput
         Cv = Cp/gamma_gas
         dt = 0.002 ! TODO: make it adaptive...
-        nsave = 50 ! First step to save, TODO: input
-        nleap = 50 ! Saving interval, TODO: input
+        nsave = 1 ! First step to save, TODO: input
+        nleap = 1 ! Saving interval, TODO: input
         isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
            nper = 49537 ! TODO: if periodic, request number of periodic nodes
@@ -515,6 +516,17 @@ program sod2d
         ! Start of time stepping                                              !
         !*********************************************************************!
 
+        !
+        ! Write EK to file
+        !
+        open(unit=666,file="analysis.dat",status="new")
+        time = 0.0d0
+        P0 = 1.0d0
+        T0 = 1.0d0/(1.4d0*Rgas*(0.1**2))
+        rho0 = P0/(Rgas*T0)
+        call volAvg_EK(nelem,npoin,ndime,nnode,ngaus,connec,gpvol,Ngp,rho0,rho(:,2),u(:,:,2),EK)
+        call write_EK(time,EK)
+
         counter = 1
 
         call nvtxStartRange("Start RK4")
@@ -581,6 +593,7 @@ program sod2d
            end if
         else if (isPeriodic .eq. 1) then ! Case is periodic
            if (nboun .eq. 0) then ! Case has no boundaries
+               write(*,*) '--| PERIODIC CASE WITH NO BOUNDARIES'
                do istep = 1,nstep
 
                   write(*,*) '   --| STEP: ', istep
@@ -617,6 +630,10 @@ program sod2d
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w)
 
+                  time = time+dt
+                  call volAvg_EK(nelem,npoin,ndime,nnode,ngaus,connec,gpvol,Ngp,rho0,rho(:,2),u(:,:,2),EK)
+                  call write_EK(time,EK)
+
                   call nvtxEndRange
 
                   !
@@ -633,7 +650,9 @@ program sod2d
                   counter = counter+1
 
                end do
+               close(666)
             else
+               write(*,*) '--| PERIODIC CASE WITH BOUNDARIES'
                do istep = 1,nstep
 
                   write(*,*) '   --| STEP: ', istep
