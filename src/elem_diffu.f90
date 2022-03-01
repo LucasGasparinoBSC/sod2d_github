@@ -19,7 +19,6 @@ module elem_diffu
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: rho(npoin), mu_e(nelem)
                       real(8),    intent(out) :: Rmass(npoin)
-                      integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: Re(nnode), nu_e
                       real(8)                 :: tmp1, gpcar(ndime,nnode)
@@ -28,14 +27,13 @@ module elem_diffu
                       !$acc kernels
                       Rmass(:) = 0.0d0
                       !$acc end kernels
-                      !$acc parallel loop gang private(ind,gpcar,Re) vector_length(32)
+                      !$acc parallel loop gang private(gpcar,Re) vector_length(32)
                       do ielem = 1,nelem
                          !$acc loop vector
                          do inode = 1,nnode
                             Re(inode) = 0.0d0
-                            ind(inode) = connec(ielem,inode)
                          end do
-                         nu_e = mu_e(ielem)/maxval(abs(rho(ind)))
+                         nu_e = mu_e(ielem)/maxval(abs(rho(connec(ielem,:))))
                          !$acc loop seq
                          do igaus = 1,ngaus
                             !$acc loop seq
@@ -47,7 +45,7 @@ module elem_diffu
                             end do
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp1 = dot_product(gpcar(idime,:),rho(ind))
+                               tmp1 = dot_product(gpcar(idime,:),rho(connec(ielem,:)))
                                !$acc loop vector
                                do inode = 1,nnode
                                   Re(inode) = Re(inode)+gpvol(1,igaus,ielem)* &
@@ -58,7 +56,7 @@ module elem_diffu
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rmass(ind(inode)) = Rmass(ind(inode))+nu_e*1.0d0*Re(inode)
+                            Rmass(connec(ielem,inode)) = Rmass(connec(ielem,inode))+nu_e*1.0d0*Re(inode)
                             !$acc end atomic
                          end do
                       end do
@@ -136,7 +134,6 @@ module elem_diffu
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: u(npoin,ndime), mu_e(nelem)
                       real(8),    intent(out) :: Rmom(npoin,ndime)
-                      integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, jnode, kdime
                       real(8)                 :: Re(nnode,ndime), twoThirds, gpcar(ndime,nnode)
                       real(8) :: grad_1, grad_2, grad_3, grad_4, grad_5, grad_6, grad_7, grad_8, grad_9
@@ -149,12 +146,10 @@ module elem_diffu
                       !$acc kernels
                       Rmom(:,:) = 0.0d0
                       !$acc end kernels
-                      !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
+                      !$acc parallel loop gang private(Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
-                         !$acc loop vector
+                         !$acc loop vector collapse(2)
                          do inode = 1,nnode
-                            ind(inode) = connec(ielem,inode)
-                            !$acc loop seq
                             do idime = 1,ndime
                                Re(inode,idime) = 0.0d0
                             end do
@@ -190,15 +185,15 @@ module elem_diffu
                             !$acc loop vector &
                             !$acc reduction(+:grad_1,grad_2,grad_3,grad_4,grad_5,grad_6,grad_7,grad_8,grad_9)
                             do inode = 1,nnode
-                               grad_1 = grad_1+gpcar(1,inode)*u(ind(inode),1)
-                               grad_2 = grad_2+gpcar(2,inode)*u(ind(inode),1)
-                               grad_3 = grad_3+gpcar(3,inode)*u(ind(inode),1)
-                               grad_4 = grad_4+gpcar(1,inode)*u(ind(inode),2)
-                               grad_5 = grad_5+gpcar(2,inode)*u(ind(inode),2)
-                               grad_6 = grad_6+gpcar(3,inode)*u(ind(inode),2)
-                               grad_7 = grad_7+gpcar(1,inode)*u(ind(inode),3)
-                               grad_8 = grad_8+gpcar(2,inode)*u(ind(inode),3)
-                               grad_9 = grad_9+gpcar(3,inode)*u(ind(inode),3)
+                               grad_1 = grad_1+gpcar(1,inode)*u(connec(ielem,inode),1)
+                               grad_2 = grad_2+gpcar(2,inode)*u(connec(ielem,inode),1)
+                               grad_3 = grad_3+gpcar(3,inode)*u(connec(ielem,inode),1)
+                               grad_4 = grad_4+gpcar(1,inode)*u(connec(ielem,inode),2)
+                               grad_5 = grad_5+gpcar(2,inode)*u(connec(ielem,inode),2)
+                               grad_6 = grad_6+gpcar(3,inode)*u(connec(ielem,inode),2)
+                               grad_7 = grad_7+gpcar(1,inode)*u(connec(ielem,inode),3)
+                               grad_8 = grad_8+gpcar(2,inode)*u(connec(ielem,inode),3)
+                               grad_9 = grad_9+gpcar(3,inode)*u(connec(ielem,inode),3)
                             end do
                             div_1 = grad_1+grad_5+grad_9 ! u_k,k = tr[grad(u)]
                             !
@@ -248,7 +243,7 @@ module elem_diffu
                          do inode = 1,nnode
                             do idime = 1,ndime
                                !$acc atomic update
-                               Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+1.0d0*Re(inode,idime)
+                               Rmom(connec(ielem,inode),idime) = Rmom(connec(ielem,inode),idime)+1.0d0*Re(inode,idime)
                                !$acc end atomic
                             end do
                          end do
@@ -269,7 +264,6 @@ module elem_diffu
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: u(npoin,ndime), Tem(npoin), mu_e(nelem)
                       real(8),    intent(out) :: Rener(npoin)
-                      integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: Re(nnode), kappa_e
                       real(8)                 :: el_Ke(nnode)
@@ -279,18 +273,17 @@ module elem_diffu
                       !$acc kernels
                       Rener(:) = 0.0d0
                       !$acc end kernels
-                      !$acc parallel loop gang private(ind,el_Ke,Re,gpcar) vector_length(32)
+                      !$acc parallel loop gang private(el_Ke,Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
                          !$acc loop vector
                          do inode = 1,nnode
                             Re(inode) = 0.0d0
-                            ind(inode) = connec(ielem,inode)
                          end do
                          kappa_e = mu_e(ielem)*1004.0d0/0.72d0 ! Fixed Cp and Pr
                          !kappa_e = mu_e(ielem)/(1.40d0-1.0d0)
                          !$acc loop vector
                          do inode = 1,nnode
-                            el_Ke(inode) = dot_product(u(ind(inode),:),u(ind(inode),:))/2.0d0
+                            el_Ke(inode) = dot_product(u(connec(ielem,inode),:),u(connec(ielem,inode),:))/2.0d0
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
@@ -303,7 +296,7 @@ module elem_diffu
                             end do
                             !$acc loop seq
                             do idime = 1,ndime
-                               gradT = kappa_e*dot_product(gpcar(idime,:),Tem(ind))
+                               gradT = kappa_e*dot_product(gpcar(idime,:),Tem(connec(ielem,:)))
                                gradKe = mu_e(ielem)*dot_product(gpcar(idime,:),el_Ke(:))
                                !$acc loop vector
                                do inode = 1,nnode
@@ -315,7 +308,7 @@ module elem_diffu
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rener(ind(inode)) = Rener(ind(inode))+1.0d0*Re(inode)
+                            Rener(connec(ielem,inode)) = Rener(connec(ielem,inode))+1.0d0*Re(inode)
                             !$acc end atomic
                          end do
                       end do
