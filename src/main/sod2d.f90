@@ -67,17 +67,17 @@ program sod2d
         nnode = 27 ! TODO: need to allow for mixed elements...
         porder = 2 ! TODO: make it input
         npbou = 9 ! TODO: Need to get his from somewhere...
-        nstep = 5 ! TODO: Needs to be input...
+        nstep = 10 ! TODO: Needs to be input...
         Rgas = 287.00d0 ! TODO: Make it input
         Cp = 1004.00d0 ! TODO: Make it input
         gamma_gas = 1.40d0 ! TODO: Make it innput
         Cv = Cp/gamma_gas
         dt = 0.002 ! TODO: make it adaptive...
-        nsave = 1 ! First step to save, TODO: input
-        nleap = 1 ! Saving interval, TODO: input
+        nsave = 10 ! First step to save, TODO: input
+        nleap = 10 ! Saving interval, TODO: input
         isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
-           nper = 49537 ! TODO: if periodic, request number of periodic nodes
+           nper = 197377 ! TODO: if periodic, request number of periodic nodes
         else if (isPeriodic == 0) then
            nper = 0 ! Set periodic nodes to zero if case is not periodic
         end if
@@ -526,6 +526,8 @@ program sod2d
         rho0 = P0/(Rgas*T0)
         call volAvg_EK(nelem,npoin,ndime,nnode,ngaus,connec,gpvol,Ngp,rho0,rho(:,2),u(:,:,2),EK)
         call write_EK(time,EK)
+        write(*,*) "--| time   ,   EK"
+        write(*,*) "--| ",time,"  |  ",EK
 
         counter = 1
 
@@ -633,6 +635,8 @@ program sod2d
                   time = time+dt
                   call volAvg_EK(nelem,npoin,ndime,nnode,ngaus,connec,gpvol,Ngp,rho0,rho(:,2),u(:,:,2),EK)
                   call write_EK(time,EK)
+                  write(*,*) "--| time   ,   EK"
+                  write(*,*) "--| ",time,"  |  ",EK
 
                   call nvtxEndRange
 

@@ -28,7 +28,6 @@ module elem_convec
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: q(npoin,ndime)
                       real(8),    intent(out) :: Rmass(npoin)
-                      integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: Re(nnode)
                       real(8)                 :: tmp1, gpcar(ndime,nnode)
@@ -37,12 +36,11 @@ module elem_convec
                       !$acc kernels
                       Rmass(:) = 0.0d0
                       !$acc end kernels
-                      !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
+                      !$acc parallel loop gang private(Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
                          !$acc loop vector
                          do inode = 1,nnode
                             Re(inode) = 0.0d0
-                            ind(inode) = connec(ielem,inode)
                          end do
                          !
                          ! Quadrature
@@ -59,7 +57,7 @@ module elem_convec
                             end do
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp1 = tmp1+dot_product(gpcar(idime,:),q(ind,idime))
+                               tmp1 = tmp1+dot_product(gpcar(idime,:),q(connec(ielem,:),idime))
                             end do
                             !$acc loop vector
                             do inode = 1,nnode
@@ -73,7 +71,7 @@ module elem_convec
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rmass(ind(inode)) = Rmass(ind(inode))+Re(inode)
+                            Rmass(connec(ielem,inode)) = Rmass(connec(ielem,inode))+Re(inode)
                             !$acc end atomic
                          end do
                       end do
@@ -100,7 +98,6 @@ module elem_convec
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: q(npoin,ndime), u(npoin,ndime), pr(npoin)
                       real(8),    intent(out) :: Rmom(npoin,ndime)
-                      integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, idime, jdime, inode, kdime
                       real(8)                 :: Re(nnode,ndime), divgp, grpgp
                       real(8)                 :: tmp1, tmp2, tmp3, gpcar(ndime,nnode)
@@ -109,12 +106,10 @@ module elem_convec
                       !$acc kernels
                       Rmom(:,:) = 0.0d0
                       !$acc end kernels
-                      !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
+                      !$acc parallel loop gang private(Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
-                         !$acc loop vector
+                         !$acc loop vector collapse(2)
                          do inode = 1,nnode
-                            ind(inode) = connec(ielem,inode)
-                            !$acc loop seq
                             do idime = 1,ndime
                                Re(inode,idime) = 0.0d0
                             end do
@@ -128,15 +123,15 @@ module elem_convec
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
                             end do
-                            tmp1 = dot_product(gpcar(1,:),q(ind,1)*u(ind,1)+pr(ind))
-                            tmp1 = tmp1+dot_product(gpcar(2,:),q(ind,1)*u(ind,2))
-                            tmp1 = tmp1+dot_product(gpcar(3,:),q(ind,1)*u(ind,3))
-                            tmp2 = dot_product(gpcar(1,:),q(ind,2)*u(ind,1))
-                            tmp2 = tmp2+dot_product(gpcar(2,:),q(ind,2)*u(ind,2)+pr(ind))
-                            tmp2 = tmp2+dot_product(gpcar(3,:),q(ind,2)*u(ind,3))
-                            tmp3 = dot_product(gpcar(1,:),q(ind,3)*u(ind,1))
-                            tmp3 = tmp3+dot_product(gpcar(2,:),q(ind,3)*u(ind,2))
-                            tmp3 = tmp3+dot_product(gpcar(3,:),q(ind,3)*u(ind,3)+pr(ind))
+                            tmp1 = dot_product(gpcar(1,:),q(connec(ielem,:),1)*u(connec(ielem,:),1)+pr(connec(ielem,:)))
+                            tmp1 = tmp1+dot_product(gpcar(2,:),q(connec(ielem,:),1)*u(connec(ielem,:),2))
+                            tmp1 = tmp1+dot_product(gpcar(3,:),q(connec(ielem,:),1)*u(connec(ielem,:),3))
+                            tmp2 = dot_product(gpcar(1,:),q(connec(ielem,:),2)*u(connec(ielem,:),1))
+                            tmp2 = tmp2+dot_product(gpcar(2,:),q(connec(ielem,:),2)*u(connec(ielem,:),2)+pr(connec(ielem,:)))
+                            tmp2 = tmp2+dot_product(gpcar(3,:),q(connec(ielem,:),2)*u(connec(ielem,:),3))
+                            tmp3 = dot_product(gpcar(1,:),q(connec(ielem,:),3)*u(connec(ielem,:),1))
+                            tmp3 = tmp3+dot_product(gpcar(2,:),q(connec(ielem,:),3)*u(connec(ielem,:),2))
+                            tmp3 = tmp3+dot_product(gpcar(3,:),q(connec(ielem,:),3)*u(connec(ielem,:),3)+pr(connec(ielem,:)))
                             !$acc loop vector
                             do inode = 1,nnode
                                Re(inode,1) = Re(inode,1)+gpvol(1,igaus,ielem)*Ngp(igaus,inode)*tmp1
@@ -151,7 +146,7 @@ module elem_convec
                          do idime = 1,ndime
                             do inode = 1,nnode
                               !$acc atomic update
-                              Rmom(ind(inode),idime) = Rmom(ind(inode),idime)+Re(inode,idime)
+                              Rmom(connec(ielem,inode),idime) = Rmom(connec(ielem,inode),idime)+Re(inode,idime)
                               !$acc end atomic
                             end do
                          end do
@@ -179,7 +174,6 @@ module elem_convec
                       real(8),    intent(in)  :: gpvol(1,ngaus,nelem)
                       real(8),    intent(in)  :: u(npoin,ndime), pr(npoin), E(npoin)
                       real(8),    intent(out) :: Rener(npoin)
-                      integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, idime, ipoin, jdime
                       real(8)                 :: Re(nnode), fener(npoin,ndime)
                       real(8)                 :: tmp1, gpcar(ndime,nnode)
@@ -188,12 +182,11 @@ module elem_convec
                       !$acc kernels
                       Rener(:) = 0.0d0
                       !$acc end kernels
-                      !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
+                      !$acc parallel loop gang private(Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
                          !$acc loop vector
                          do inode = 1,nnode
                             Re(inode) = 0.0d0
-                            ind(inode) = connec(ielem,inode)
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
@@ -207,7 +200,7 @@ module elem_convec
                             tmp1 = 0.0d0
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp1 = tmp1+dot_product(gpcar(idime,:),u(ind,idime)*(E(ind)+pr(ind)))
+                               tmp1 = tmp1+dot_product(gpcar(idime,:),u(connec(ielem,:),idime)*(E(connec(ielem,:))+pr(connec(ielem,:))))
                             end do
                             !$acc loop vector
                             do inode = 1,nnode
@@ -220,7 +213,7 @@ module elem_convec
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rener(ind(inode)) = Rener(ind(inode))+Re(inode)
+                            Rener(connec(ielem,inode)) = Rener(connec(ielem,inode))+Re(inode)
                             !$acc end atomic
                          end do
                       end do
@@ -242,7 +235,6 @@ module elem_convec
                       real(8),    intent(in)  :: q(npoin,ndime)
                       real(8),    intent(in)  :: alpha(npoin)
                       real(8),    intent(out) :: Rconvec(npoin)
-                      integer(4)              :: ind(nnode)
                       integer(4)              :: ielem, igaus, inode, idime, jdime
                       real(8)                 :: tmp1, tmp2, Re(nnode), gpcar(ndime,nnode)
 
@@ -250,12 +242,11 @@ module elem_convec
                       !$acc kernels
                       Rconvec(:) = 0.0d0
                       !$acc end kernels
-                      !$acc parallel loop gang private(ind,Re,gpcar) vector_length(32)
+                      !$acc parallel loop gang private(Re,gpcar) vector_length(32)
                       do ielem = 1,nelem
                          !$acc loop vector
                          do inode = 1,nnode
                             Re(inode) = 0.0d0
-                            ind(inode) = connec(ielem,inode)
                          end do
                          !$acc loop seq
                          do igaus = 1,ngaus
@@ -266,11 +257,11 @@ module elem_convec
                                   gpcar(idime,inode) = dot_product(He(idime,:,igaus,ielem),dNgp(:,inode,igaus))
                                end do
                             end do
-                            tmp1 = dot_product(Ngp(igaus,:),alpha(ind))
+                            tmp1 = dot_product(Ngp(igaus,:),alpha(connec(ielem,:)))
                             tmp2 = 0.0d0
                             !$acc loop seq
                             do idime = 1,ndime
-                               tmp2 = tmp2+dot_product(gpcar(idime,:),q(ind,idime))
+                               tmp2 = tmp2+dot_product(gpcar(idime,:),q(connec(ielem,:),idime))
                             end do
                             !$acc loop vector
                             do inode = 1,nnode
@@ -284,7 +275,7 @@ module elem_convec
                          !$acc loop vector
                          do inode = 1,nnode
                             !$acc atomic update
-                            Rconvec(ind(inode)) = Rconvec(ind(inode))+Re(inode)
+                            Rconvec(connec(ielem,inode)) = Rconvec(connec(ielem,inode))+Re(inode)
                             !$acc end atomic
                          end do
                       end do
