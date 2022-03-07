@@ -33,7 +33,7 @@ program sod2d
         integer(4)                 :: ielem, ipoin, iboun, ipbou
         integer(4)                 :: idof, ndof, nbnodes, ibnodes
         integer(4)                 :: ppow, porder
-        integer(4)                 :: flag_predic
+        integer(4)                 :: flag_predic, flag_emac
         integer(4)                 :: nsave, nleap
         integer(4)                 :: counter
         integer(4)                 :: isPeriodic, npoin_w
@@ -49,9 +49,10 @@ program sod2d
         real(8),    allocatable    :: u(:,:,:), q(:,:,:), rho(:,:), pr(:,:), E(:,:), Tem(:,:), e_int(:,:)
         real(8),    allocatable    :: Ml(:)!, Mc(:)
         real(8),    allocatable    :: mu_e(:)
+        real(8),    allocatable    :: source_term(:)
         real(8)                    :: s, t, z, detJe
         real(8)                    :: Rgas, gamma_gas, Cp, Cv
-        real(8)                    :: dt, cfl, he_aux, time, rho0, P0, T0, EK
+        real(8)                    :: dt, cfl, he_aux, time, rho0, P0, T0, EK, VolTot
         character(500)             :: file_path
         character(500)             :: file_name, dumpfile
         character(5)               :: matrix_type, solver_type
@@ -72,15 +73,30 @@ program sod2d
         Cp = 1004.00d0 ! TODO: Make it input
         gamma_gas = 1.40d0 ! TODO: Make it innput
         Cv = Cp/gamma_gas
-        dt = 0.002 ! TODO: make it adaptive...
+        dt = 0.001 ! TODO: make it adaptive...
         nsave = 10 ! First step to save, TODO: input
         nleap = 10 ! Saving interval, TODO: input
         isPeriodic = 1 ! TODO: make it a read parameter (0 if not periodic, 1 if periodic)
         if (isPeriodic == 1) then
-           nper = 197377 ! TODO: if periodic, request number of periodic nodes
+           nper = 49537 ! TODO: if periodic, request number of periodic nodes
         else if (isPeriodic == 0) then
            nper = 0 ! Set periodic nodes to zero if case is not periodic
         end if
+        flag_emac = 0
+        if (flag_emac == 1) then
+           write(*,*) "--| RUNNING WITH EMAC CONVECTION"
+        else if (flag_emac == 0) then
+           write(*,*) "--| RUNNING WITH CONSERV CONVECTION"
+        else
+           write(*,*) "--| FLAG_EMAC MUST BE EITHER 0 OR 1!"
+           STOP(1)
+        end if
+
+        allocate(source_term(ndime))
+        !set the source term
+        source_term(1) = 0.0040762808843141035d0 !this is for Retau 180
+        source_term(2) = 0.00d0
+        source_term(3) = 0.00d0
 
         !*********************************************************************!
         ! Read mesh in Alya format                                            !
@@ -387,14 +403,15 @@ program sod2d
         call nvtxStartRange("Jacobian info")
         allocate(He(ndime,ndime,ngaus,nelem))
         allocate(gpvol(1,ngaus,nelem))
-
+        call elem_jacobian(ndime,nnode,nelem,npoin,ngaus,connec,coord,dNgp,wgp,gpvol,He)
+        call  nvtxEndRange
+        VolTot = 0.0d0
         do ielem = 1,nelem
            do igaus = 1,ngaus
-              call elem_jacobian(ndime,nnode,coord(connec(ielem,1:nnode),:),dNgp(:,:,igaus),detJe,He(:,:,igaus,ielem))
-              gpvol(1,igaus,ielem) = wgp(igaus)*detJe
+              VolTot = VolTot+gpvol(1,igaus,ielem)
            end do
         end do
-        call  nvtxEndRange
+        write(*,*) '--| DOMAIN VOLUME := ',VolTot
 
         !*********************************************************************!
         ! Treat periodicity                                                   !
@@ -562,7 +579,7 @@ program sod2d
                  write(timeStep,'(i4)') istep
                  call nvtxStartRange("RK4 step "//timeStep,istep)
 
-                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                 call rk_4_main(flag_predic,flag_emac,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
@@ -571,7 +588,7 @@ program sod2d
                  ! Advance with entropy viscosity
                  !
                  flag_predic = 0
-                 call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                 call rk_4_main(flag_predic,flag_emac,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
                            ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
@@ -620,7 +637,7 @@ program sod2d
                   write(timeStep,'(i4)') istep
                   call nvtxStartRange("RK4 step "//timeStep,istep)
 
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                  call rk_4_main(flag_predic,flag_emac,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w)
 
@@ -628,7 +645,7 @@ program sod2d
                   ! Advance with entropy viscosity
                   !
                   flag_predic = 0
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                  call rk_4_main(flag_predic,flag_emac,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w)
 
@@ -681,19 +698,19 @@ program sod2d
                   write(timeStep,'(i4)') istep
                   call nvtxStartRange("RK4 step "//timeStep,istep)
 
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                  call rk_4_main(flag_predic,flag_emac,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
-                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
+                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes,source_term) ! Optional args
 
                   !
                   ! Advance with entropy viscosity
                   !
                   flag_predic = 0
-                  call rk_4_main(flag_predic,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
+                  call rk_4_main(flag_predic,flag_emac,nelem,nboun,npbou,npoin,npoin_w,ndime,ngaus,nnode, &
                            ppow,connec,Ngp,dNgp,He,Ml,gpvol,dt,helem,Rgas,gamma_gas, &
                            rho,u,q,pr,E,Tem,e_int,mu_e,lpoin_w, &
-                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes) ! Optional args
+                           ndof,nbnodes,ldof,lbnodes,bound,bou_codes,source_term) ! Optional args
 
                   call nvtxEndRange
 
